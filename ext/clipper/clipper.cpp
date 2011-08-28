@@ -1,8 +1,8 @@
 /*******************************************************************************
 *                                                                              *
 * Author    :  Angus Johnson                                                   *
-* Version   :  4.4.0                                                           *
-* Date      :  6 August 2011                                                   *
+* Version   :  4.4.2                                                           *
+* Date      :  23 August 2011                                                  *
 * Website   :  http://www.angusj.com                                           *
 * Copyright :  Angus Johnson 2010-2011                                         *
 *                                                                              *
@@ -46,10 +46,10 @@ namespace std
 }
 #endif
 
-namespace clipper {
+namespace polygonclipping {
 
 static double const horizontal = -3.4E+38;
-static double const pi = 3.14159265359;
+static double const pi = 3.141592653589793238;
 enum Direction { dRightToLeft, dLeftToRight };
 
 //------------------------------------------------------------------------------
@@ -67,8 +67,11 @@ class Int128
     Int128(long64 _lo = 0)
     {
       hi = 0;
-      lo = std::abs(_lo);
-      if (_lo < 0) Negate(*this);
+      if (_lo < 0) {
+        lo = -_lo;
+        Negate(*this);
+      } else
+          lo = _lo;
     }
 
     Int128(const Int128 &val): hi(val.hi), lo(val.lo){}
@@ -102,10 +105,9 @@ class Int128
 
     Int128& operator += (const Int128 &rhs)
     {
-      long64 xlo = lo;
-      hi += rhs.hi; lo += rhs.lo;
-      if((xlo < 0 && rhs.lo < 0) || (((xlo < 0) != (rhs.lo < 0)) && lo >= 0))
-        hi++;
+      hi += rhs.hi;
+      lo += rhs.lo;
+      if (ulong64(lo) < ulong64(rhs.lo)) hi++;
       return *this;
     }
 
@@ -149,15 +151,12 @@ class Int128
       //nb: see comments in clipper.pas
       ulong64 a = int1Hi * int2Hi;
       ulong64 b = int1Lo * int2Lo;
-      ulong64 c = int1Hi * int2Lo + int1Lo * int2Hi; //nb avoid karatsuba
+      ulong64 c = int1Hi * int2Lo + int1Lo * int2Hi;
 
-      tmp.lo = c << 32;
       tmp.hi = a + (c >> 32);
-      bool hiBitSet = (tmp.lo < 0);
+      tmp.lo = c << 32;
       tmp.lo += long64(b);
-      if ((hiBitSet && (long64(b) < 0)) ||
-        ((hiBitSet != (long64(b) < 0)) && (tmp.lo >= 0))) tmp.hi++;
-
+      if (ulong64(tmp.lo) < b) tmp.hi++;
       if (negate) Negate(tmp);
       return tmp;
     }
@@ -195,13 +194,20 @@ class Int128
     double AsDouble() const
     {
       const double shift64 = 18446744073709551616.0; //2^64
+      const double bit64 = 9223372036854775808.0;
       if (hi < 0)
       {
         Int128 tmp(*this);
         Negate(tmp);
-        return -((double)tmp.lo + (double)tmp.hi * shift64);
+        if (tmp.lo < 0)
+          return (double)tmp.lo - bit64 - tmp.hi * shift64;
+        else
+          return -(double)tmp.lo - tmp.hi * shift64;
       }
-      else return (double)lo + (double)hi * shift64;
+      else if (lo < 0)
+        return -(double)lo + bit64 + hi * shift64;
+      else
+        return (double)lo + (double)hi * shift64;
     }
 
     //for bug testing ...
@@ -216,7 +222,7 @@ class Int128
       while (val.hi != 0 || val.lo != 0)
       {
         Div10(val, tmp, r);
-        result[i--] = '0' + r;
+        result[i--] = char('0' + r);
         val = tmp;
       }
       if (hi < 0) result[i--] = '-';
@@ -252,23 +258,23 @@ private:
       for (int i = 63; i >= 0; --i)
       {
         if ((val.hi & ((long64)1 << i)) != 0)
-          remainder = (remainder * 2) + 1; else
-          remainder *= 2;
+          remainder = char((remainder * 2) + 1); else
+          remainder *= char(2);
         if (remainder >= 10)
         {
           result.hi += ((long64)1 << i);
-          remainder -= 10;
+          remainder -= char(10);
         }
       }
       for (int i = 63; i >= 0; --i)
       {
         if ((val.lo & ((long64)1 << i)) != 0)
-          remainder = (remainder * 2) + 1; else
-          remainder *= 2;
+          remainder = char((remainder * 2) + 1); else
+          remainder *= char(2);
         if (remainder >= 10)
         {
           result.lo += ((long64)1 << i);
-          remainder -= 10;
+          remainder -= char(10);
         }
       }
     }
@@ -609,18 +615,6 @@ void DisposeOutPts(OutPt*& pp)
     pp = pp->next;
     delete tmpPp ;
   }
-}
-//------------------------------------------------------------------------------
-
-OutRec* CreateOutRec()
-{
-  OutRec* result = new OutRec;
-  result->idx = -1;
-  result->isHole = false;
-  result->FirstLeft = 0;
-  result->AppendLink = 0;
-  result->pts = 0;
-  return result;
 }
 //------------------------------------------------------------------------------
 
@@ -1064,6 +1058,7 @@ Clipper::Clipper() : ClipperBase() //constructor
   m_SortedEdges = 0;
   m_IntersectNodes = 0;
   m_ExecuteLocked = false;
+  m_UseFullRange = false;
 };
 //------------------------------------------------------------------------------
 
@@ -1212,7 +1207,7 @@ bool Clipper::ExecuteInternal(bool fixHoleLinkages)
       ClearHorzJoins();
       ProcessHorizontals();
       long64 topY = PopScanbeam();
-      succeeded = ProcessIntersections(topY);
+      succeeded = ProcessIntersections(botY, topY);
       if (!succeeded) break;
       ProcessEdgesAtTopOfScanbeam(topY);
       botY = topY;
@@ -1399,13 +1394,13 @@ void Clipper::AddLocalMinPoly(TEdge *e1, TEdge *e2, const IntPoint &pt)
 {
   if( e2->dx == horizontal || ( e1->dx > e2->dx ) )
   {
-    AddOutPt( e1, pt );
+    AddOutPt( e1, e2, pt );
     e2->outIdx = e1->outIdx;
     e1->side = esLeft;
     e2->side = esRight;
   } else
   {
-    AddOutPt( e2, pt );
+    AddOutPt( e2, e1, pt );
     e1->outIdx = e2->outIdx;
     e1->side = esRight;
     e2->side = esLeft;
@@ -1415,7 +1410,7 @@ void Clipper::AddLocalMinPoly(TEdge *e1, TEdge *e2, const IntPoint &pt)
 
 void Clipper::AddLocalMaxPoly(TEdge *e1, TEdge *e2, const IntPoint &pt)
 {
-  AddOutPt( e1, pt );
+  AddOutPt( e1, 0, pt );
   if( e1->outIdx == e2->outIdx )
   {
     e1->outIdx = -1;
@@ -1759,30 +1754,19 @@ bool GetPrevNonDupOutPt(OutPt* pp, OutPt*& prev)
 OutRec* GetLowermostRec(OutRec *outRec1, OutRec *outRec2)
 {
   //work out which polygon fragment has the correct hole state ...
-  OutPt *bPt1 = outRec1->bottomPt;
-  OutPt *bPt2 = outRec2->bottomPt;
-  OutPt *next1, *next2, *prev1, *prev2;
-  if (bPt1->pt.Y > bPt2->pt.Y) return outRec1;
-  else if (bPt1->pt.Y < bPt2->pt.Y) return outRec2;
-  else if (bPt1->pt.X < bPt2->pt.X) return outRec1;
-  else if (bPt1->pt.X > bPt2->pt.X) return outRec2;
-  else if (!GetNextNonDupOutPt(bPt1, next1)) return outRec2;
-  else if (!GetNextNonDupOutPt(bPt2, next2)) return outRec1;
+  OutPt *outPt1 = outRec1->bottomPt;
+  OutPt *outPt2 = outRec2->bottomPt;
+  if (outPt1->pt.Y > outPt2->pt.Y) return outRec1;
+  else if (outPt1->pt.Y < outPt2->pt.Y) return outRec2;
+  else if (outPt1->pt.X < outPt2->pt.X) return outRec1;
+  else if (outPt1->pt.X > outPt2->pt.X) return outRec2;
+  else if (outRec1->bottomE2 == 0) return outRec2;
+  else if (outRec2->bottomE2 == 0) return outRec1;
   else
   {
-    GetPrevNonDupOutPt(bPt1, prev1);
-    GetPrevNonDupOutPt(bPt2, prev2);
-    double dx1 = GetDx(bPt1->pt, next1->pt);
-    double dx2 = GetDx(bPt1->pt, prev1->pt);
-    if (dx2 > dx1) dx1 = dx2;
-    dx2 = GetDx(bPt2->pt, next2->pt);
-    if (dx2 > dx1) return outRec2;
-    else
-    {
-      dx2 = GetDx(bPt2->pt, prev2->pt);
-      if (dx2 > dx1) return outRec2;
-      else return outRec1;
-    }
+    double dx1 = std::max(outRec1->bottomE1->dx, outRec1->bottomE2->dx);
+    double dx2 = std::max(outRec2->bottomE1->dx, outRec2->bottomE2->dx);
+    if (dx2 > dx1) return outRec2; else return outRec1;
   }
 }
 //------------------------------------------------------------------------------
@@ -1792,7 +1776,6 @@ void Clipper::AppendPolygon(TEdge *e1, TEdge *e2)
   //get the start and ends of both output polygons ...
   OutRec *outRec1 = m_PolyOuts[e1->outIdx];
   OutRec *outRec2 = m_PolyOuts[e2->outIdx];
-
   OutRec *holeStateRec = GetLowermostRec(outRec1, outRec2);
 
   //fixup hole status ...
@@ -1857,6 +1840,9 @@ void Clipper::AppendPolygon(TEdge *e1, TEdge *e2)
   {
     outRec1->bottomPt = outRec2->bottomPt;
     outRec1->bottomPt->idx = outRec1->idx;
+    outRec1->bottomE1 = outRec2->bottomE1;
+    outRec1->bottomE2 = outRec2->bottomE2;
+
     if (outRec2->FirstLeft != outRec1)
       outRec1->FirstLeft = outRec2->FirstLeft;
   }
@@ -1896,7 +1882,19 @@ void Clipper::AppendPolygon(TEdge *e1, TEdge *e2)
 }
 //------------------------------------------------------------------------------
 
-void Clipper::AddOutPt(TEdge *e, const IntPoint &pt)
+OutRec* Clipper::CreateOutRec()
+{
+  OutRec* result = new OutRec;
+  result->isHole = false;
+  result->FirstLeft = 0;
+  result->AppendLink = 0;
+  result->pts = 0;
+  result->bottomPt = 0;
+  return result;
+}
+//------------------------------------------------------------------------------
+
+void Clipper::AddOutPt(TEdge *e, TEdge *altE, const IntPoint &pt)
 {
   bool ToFront = (e->side == esLeft);
   if(  e->outIdx < 0 )
@@ -1907,6 +1905,8 @@ void Clipper::AddOutPt(TEdge *e, const IntPoint &pt)
     e->outIdx = outRec->idx;
     OutPt* op = new OutPt;
     outRec->pts = op;
+    outRec->bottomE1 = e;
+    outRec->bottomE2 = altE;
     outRec->bottomPt = op;
     op->pt = pt;
     op->idx = outRec->idx;
@@ -1923,7 +1923,12 @@ void Clipper::AddOutPt(TEdge *e, const IntPoint &pt)
     op2->pt = pt;
     op2->idx = outRec->idx;
     if (op2->pt.Y == outRec->bottomPt->pt.Y &&
-      op2->pt.X < outRec->bottomPt->pt.X) outRec->bottomPt = op2;
+      op2->pt.X < outRec->bottomPt->pt.X)
+    {
+      outRec->bottomPt = op2;
+      outRec->bottomE1 = e;
+      outRec->bottomE2 = altE;
+    }
     op2->next = op;
     op2->prev = op->prev;
     op2->prev->next = op2;
@@ -2172,7 +2177,7 @@ void Clipper::ProcessHorizontal(TEdge *horzEdge)
   if( horzEdge->nextInLML )
   {
     if( horzEdge->outIdx >= 0 )
-      AddOutPt( horzEdge, IntPoint(horzEdge->xtop, horzEdge->ytop));
+      AddOutPt( horzEdge, 0, IntPoint(horzEdge->xtop, horzEdge->ytop));
     UpdateEdgeIntoAEL( horzEdge );
   }
   else
@@ -2208,11 +2213,11 @@ void Clipper::UpdateEdgeIntoAEL(TEdge *&e)
 }
 //------------------------------------------------------------------------------
 
-bool Clipper::ProcessIntersections( const long64 topY)
+bool Clipper::ProcessIntersections(const long64 botY, const long64 topY)
 {
   if( !m_ActiveEdges ) return true;
   try {
-    BuildIntersectList(topY);
+    BuildIntersectList(botY, topY);
     if ( !m_IntersectNodes) return true;
     if ( FixupIntersections() ) ProcessIntersectList();
     else return false;
@@ -2237,7 +2242,7 @@ void Clipper::DisposeIntersectNodes()
 }
 //------------------------------------------------------------------------------
 
-void Clipper::BuildIntersectList(const long64 topY)
+void Clipper::BuildIntersectList(const long64 botY, const long64 topY)
 {
   if ( !m_ActiveEdges ) return;
 
@@ -2269,6 +2274,11 @@ void Clipper::BuildIntersectList(const long64 topY)
       if(e->tmpX > eNext->tmpX &&
         IntersectPoint(*e, *eNext, pt, m_UseFullRange))
       {
+        if (pt.Y > botY)
+        {
+            pt.Y = botY;
+            pt.X = TopX(*e, pt.Y);
+        }
         AddIntersectNode( e, eNext, pt );
         SwapPositionsInSEL(e, eNext);
         isModified = true;
@@ -2390,7 +2400,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const long64 topY)
       {
         if (e->outIdx >= 0)
         {
-          AddOutPt(e, IntPoint(e->xtop, e->ytop));
+          AddOutPt(e, 0, IntPoint(e->xtop, e->ytop));
 
           for (HorzJoinList::size_type i = 0; i < m_HorizJoins.size(); ++i)
           {
@@ -2426,7 +2436,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const long64 topY)
   {
     if( IsIntermediate( e, topY ) )
     {
-      if( e->outIdx >= 0 ) AddOutPt(e, IntPoint(e->xtop,e->ytop));
+      if( e->outIdx >= 0 ) AddOutPt(e, 0, IntPoint(e->xtop,e->ytop));
       UpdateEdgeIntoAEL(e);
 
       //if output polygons share an edge, they'll need joining later ...
@@ -2436,7 +2446,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const long64 topY)
           IntPoint(e->xbot,e->ybot),
           IntPoint(e->prevInAEL->xtop, e->prevInAEL->ytop), m_UseFullRange))
       {
-        AddOutPt(e->prevInAEL, IntPoint(e->xbot, e->ybot));
+        AddOutPt(e->prevInAEL, 0, IntPoint(e->xbot, e->ybot));
         AddJoin(e, e->prevInAEL);
       }
       else if (e->outIdx >= 0 && e->nextInAEL && e->nextInAEL->outIdx >= 0 &&
@@ -2447,7 +2457,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const long64 topY)
           IntPoint(e->xbot,e->ybot),
           IntPoint(e->nextInAEL->xtop, e->nextInAEL->ytop), m_UseFullRange))
       {
-        AddOutPt(e->nextInAEL, IntPoint(e->xbot, e->ybot));
+        AddOutPt(e->nextInAEL, 0, IntPoint(e->xbot, e->ybot));
         AddJoin(e, e->nextInAEL);
       }
     }
@@ -2656,7 +2666,7 @@ void Clipper::InsertEdgeIntoAEL(TEdge *edge)
 
 void Clipper::DoEdge1(TEdge *edge1, TEdge *edge2, const IntPoint &pt)
 {
-  AddOutPt(edge1, pt);
+  AddOutPt(edge1, edge2, pt);
   SwapSides(*edge1, *edge2);
   SwapPolyIndexes(*edge1, *edge2);
 }
@@ -2664,7 +2674,7 @@ void Clipper::DoEdge1(TEdge *edge1, TEdge *edge2, const IntPoint &pt)
 
 void Clipper::DoEdge2(TEdge *edge1, TEdge *edge2, const IntPoint &pt)
 {
-  AddOutPt(edge2, pt);
+  AddOutPt(edge2, edge1, pt);
   SwapSides(*edge1, *edge2);
   SwapPolyIndexes(*edge1, *edge2);
 }
@@ -2672,8 +2682,8 @@ void Clipper::DoEdge2(TEdge *edge1, TEdge *edge2, const IntPoint &pt)
 
 void Clipper::DoBothEdges(TEdge *edge1, TEdge *edge2, const IntPoint &pt)
 {
-  AddOutPt(edge1, pt);
-  AddOutPt(edge2, pt);
+  AddOutPt(edge1, edge2, pt);
+  AddOutPt(edge2, edge1, pt);
   SwapSides( *edge1 , *edge2 );
   SwapPolyIndexes( *edge1 , *edge2 );
 }
@@ -2880,11 +2890,12 @@ struct DoublePoint
   double Y;
   DoublePoint(double x = 0, double y = 0) : X(x), Y(y) {}
 };
+//------------------------------------------------------------------------------
 
 Polygon BuildArc(const IntPoint &pt,
   const double a1, const double a2, const double r)
 {
-  int steps = std::max(6, int(std::sqrt(std::abs(r)) * std::abs(a2 - a1)));
+  int steps = std::max(6, int(std::sqrt(std::fabs(r)) * std::fabs(a2 - a1)));
   Polygon result(steps);
   int n = steps - 1;
   double da = (a2 - a1) / n;
@@ -2910,115 +2921,258 @@ DoublePoint GetUnitNormal( const IntPoint &pt1, const IntPoint &pt2)
   dy *= f;
   return DoublePoint(dy, -dx);
 }
+
+//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-bool OffsetPolygons(const Polygons &in_pgs, Polygons &out_pgs, const float &delta)
+class PolyOffsetBuilder
 {
+private:
+  Polygons m_p;
+  Polygon* m_curr_poly;
+  std::vector<DoublePoint> normals;
+  double m_delta, m_RMin;
+  int m_highJ;
+  static const int buffLength = 128;
+  JoinType m_jointype;
 
-  if (delta == 0)
-  {
-    if (&in_pgs == &out_pgs) return true;
-    out_pgs.assign(in_pgs.begin(), in_pgs.end());
-    return true;
-  }
+public:
 
-  Polygons pgs(in_pgs); //in case in_pgs == out_pgs
-  out_pgs.clear();
-  out_pgs.reserve(pgs.size());
-
-  double deltaSq = delta*delta;
-
-  for (int j = 0; j < (int)pgs.size(); ++j)
-  {
-    int highI = (int)pgs[j].size() -1;
-    //to minimize artefacts, strip out those polygons where
-    //it's shrinking and where its area < Sqr(delta) ...
-    double a1 = Area(pgs[j]);
-    if (delta < 0) { if (a1 > 0 && a1 < deltaSq) highI = 0;}
-    else if (a1 < 0 && -a1 < deltaSq) highI = 0; //nb: a hole if area < 0
-
-    if (highI < 2 && delta <= 0) continue;
-    if (highI == 0)
+PolyOffsetBuilder(const Polygons& in_polys, Polygons& out_polys,
+  double delta, JoinType jointype, double MiterLimit)
+{
+    //nb precondition - out_polys != ptsin_polys
+    if (delta == 0)
     {
-        Polygon arc = BuildArc(pgs[j][highI], 0, pi*2, delta);
-        out_pgs.push_back(arc);
-        continue;
+        out_polys = in_polys;
+        return;
     }
 
-    Polygon pg;
-    pg.reserve(highI*2+2);
+    this->m_p = in_polys;
+    this->m_delta = delta;
 
-    std::vector < DoublePoint > normals(highI+1);
-    normals[0] = GetUnitNormal(pgs[j][highI], pgs[j][0]);
-    for (int i = 1; i <= highI; ++i)
-      normals[i] = GetUnitNormal(pgs[j][i-1], pgs[j][i]);
+    this->m_jointype = jointype;
+    //MiterLimit defaults to 2 times delta's size ...
+    if (MiterLimit <= 0) MiterLimit = 2;
+    m_RMin = 2/(MiterLimit*MiterLimit);
 
-    for (int i = 0; i < highI; ++i)
+    double deltaSq = delta*delta;
+    out_polys.clear();
+    out_polys.resize(in_polys.size());
+    for (Polygons::size_type i = 0; i < in_polys.size(); i++)
     {
-      pg.push_back(IntPoint(pgs[j][i].X + Round(delta *normals[i].X),
-        pgs[j][i].Y + Round(delta *normals[i].Y)));
-      pg.push_back(IntPoint(pgs[j][i].X + Round(delta *normals[i+1].X),
-        pgs[j][i].Y + Round(delta *normals[i+1].Y)));
-    }
-    pg.push_back(IntPoint(pgs[j][highI].X + Round(delta *normals[highI].X),
-      pgs[j][highI].Y + Round(delta *normals[highI].Y)));
-    pg.push_back(IntPoint(pgs[j][highI].X + Round(delta *normals[0].X),
-      pgs[j][highI].Y + Round(delta *normals[0].Y)));
+        m_curr_poly = &out_polys[i];
+        int len = in_polys[i].size();
+        if (len > 1 && m_p[i][0].X == m_p[i][len - 1].X &&
+            m_p[i][0].Y == m_p[i][len - 1].Y) len--;
+        m_highJ = len - 1;
 
-    //round off reflex angles (ie > 180 deg) unless it's almost flat (ie < 10deg angle) ...
-    //cross product normals < 0 -> reflex angle; dot product normals == 1 -> no angle
-    if ((normals[highI].X *normals[0].Y - normals[0].X *normals[highI].Y) *delta >= 0 &&
-    (normals[0].X *normals[highI].X + normals[0].Y *normals[highI].Y) < 0.985)
-    {
-      double a1 = std::atan2(normals[highI].Y, normals[highI].X);
-      double a2 = std::atan2(normals[0].Y, normals[0].X);
-      if (delta > 0 && a2 < a1) a2 = a2 + pi*2;
-      else if (delta < 0 && a2 > a1) a2 = a2 - pi*2;
-      Polygon arc = BuildArc(pgs[j][highI], a1, a2, delta);
-      Polygon::iterator it = pg.begin() +highI*2+1;
-      pg.insert(it, arc.begin(), arc.end());
-    }
-    for (int i = highI; i > 0; --i)
-      if ((normals[i-1].X*normals[i].Y - normals[i].X*normals[i-1].Y) *delta >= 0 &&
-      (normals[i].X*normals[i-1].X + normals[i].Y*normals[i-1].Y) < 0.985)
-      {
-        double a1 = std::atan2(normals[i-1].Y, normals[i-1].X);
-        double a2 = std::atan2(normals[i].Y, normals[i].X);
-        if (delta > 0 && a2 < a1) a2 = a2 + pi*2;
-        else if (delta < 0 && a2 > a1) a2 = a2 - pi*2;
-        Polygon arc = BuildArc(pgs[j][i-1], a1, a2, delta);
-        Polygon::iterator it = pg.begin() +(i-1)*2+1;
-        pg.insert(it, arc.begin(), arc.end());
-      }
-    out_pgs.push_back(pg);
-  }
+        //to minimize artefacts, strip out those polygons where
+        //it's being shrunk and where its area < Sqr(delta) ...
+        double a1 = Area(in_polys[i], true);
+        if (delta < 0) { if (a1 > 0 && a1 < deltaSq) len = 0; }
+        else if (a1 < 0 && -a1 < deltaSq) len = 0; //nb: a hole if area < 0
 
-  //finally, clean up untidy corners ...
-  Clipper c4;
-  c4.AddPolygons(out_pgs, ptSubject);
-  if (delta > 0){
-    return c4.Execute(ctUnion, out_pgs, pftNonZero, pftNonZero);
-  }
-  else
-  {
-    IntRect r = c4.GetBounds();
-    Polygon outer(4);
-    outer[0] = IntPoint(r.left-10, r.bottom+10);
-    outer[1] = IntPoint(r.right+10, r.bottom+10);
-    outer[2] = IntPoint(r.right+10, r.top-10);
-    outer[3] = IntPoint(r.left-10, r.top-10);
-    c4.AddPolygon(outer, ptSubject);
-    if (c4.Execute(ctUnion, out_pgs, pftNonZero, pftNonZero))
-    {
-      //erase just the first (outer) polygon
-      out_pgs.erase(out_pgs.begin());
-      return true;
+        if (len == 0 || (len < 3 && delta <= 0)) continue;
+        if (len == 1)
+        {
+            Polygon arc = BuildArc(in_polys[i][m_highJ], 0, 2 * pi, delta);
+            out_polys[i] = arc;
+            continue;
+        }
+
+        //build normals ...
+        normals.clear();
+        normals.resize(len);
+        normals[0] = GetUnitNormal(in_polys[i][m_highJ], in_polys[i][0]);
+        for (int j = 1; j < len; ++j)
+            normals[j] = GetUnitNormal(in_polys[i][j - 1], in_polys[i][j]);
+
+        switch (jointype)
+        {
+            case jtButt:
+                for (int j = 0; j < len; ++j) DoButt(i, j);
+                break;
+            case jtMiter:
+                for (int j = 0; j < len; ++j) DoMiter(i, j, MiterLimit);
+                break;
+            case jtRound:
+                for (int j = 0; j < len; ++j) DoRound(i, j);
+                break;
+            case jtSquare:
+                for (int j = 0; j < len; ++j) DoSquare(i, j, 1.0);
+                break;
+        }
     }
-    else return false;
-  }
+
+    //finally, clean up untidy corners using Clipper ...
+    Clipper clpr;
+    clpr.AddPolygons(out_polys, ptSubject);
+    if (delta > 0)
+    {
+        if (!clpr.Execute(ctUnion, out_polys, pftNonZero, pftNonZero))
+            out_polys.clear();
+    }
+    else
+    {
+        IntRect r = clpr.GetBounds();
+        Polygon outer(4);
+        outer[0] = IntPoint(r.left - 10, r.bottom + 10);
+        outer[1] = IntPoint(r.right + 10, r.bottom + 10);
+        outer[2] = IntPoint(r.right + 10, r.top - 10);
+        outer[3] = IntPoint(r.left - 10, r.top - 10);
+        clpr.AddPolygon(outer, ptSubject);
+        if (clpr.Execute(ctUnion, out_polys, pftNonZero, pftNonZero))
+        {
+            out_polys.erase(out_polys.begin());
+        } else
+            out_polys.clear();
+    }
 }
 //------------------------------------------------------------------------------
 
-} //namespace clipper
+private:
 
+void AddPoint(IntPoint& pt)
+{
+    Polygon::size_type len = m_curr_poly->size();
+    if (len == m_curr_poly->capacity())
+        m_curr_poly->reserve(len + buffLength);
+    m_curr_poly->push_back(pt);
+}
+//------------------------------------------------------------------------------
+
+void DoButt(int i, int j)
+{
+    int k;
+    if (j == m_highJ) k = 0; else k = j + 1;
+    IntPoint pt1 = IntPoint((long64)(m_p[i][j].X + normals[j].X * m_delta),
+        (long64)(m_p[i][j].Y + normals[j].Y * m_delta));
+    IntPoint pt2 = IntPoint((long64)(m_p[i][j].X + normals[k].X * m_delta),
+        (long64)(m_p[i][j].Y + normals[k].Y * m_delta));
+    AddPoint(pt1);
+    AddPoint(pt2);
+}
+//------------------------------------------------------------------------------
+
+void DoSquare(int i, int j, double mul)
+{
+    int k;
+    if (j == m_highJ) k = 0; else k = j + 1;
+    IntPoint pt1 = IntPoint((long64)(m_p[i][j].X + normals[j].X * m_delta),
+        (long64)(m_p[i][j].Y + normals[j].Y * m_delta));
+    IntPoint pt2 = IntPoint((long64)(m_p[i][j].X + normals[k].X * m_delta),
+        (long64)(m_p[i][j].Y + normals[k].Y * m_delta));
+    if ((normals[j].X * normals[k].Y - normals[k].X * normals[j].Y) * m_delta >= 0)
+    {
+        double a1 = std::atan2(normals[j].Y, normals[j].X);
+        double a2 = std::atan2(-normals[k].Y, -normals[k].X);
+        a1 = std::fabs(a2 - a1);
+        if (a1 > pi) a1 = pi * 2 - a1;
+        double dx = std::tan((pi - a1)/4) *std::fabs(m_delta * mul); ////
+        pt1 = IntPoint((long64)(pt1.X -normals[j].Y *dx),
+          (long64)(pt1.Y + normals[j].X *dx));
+        AddPoint(pt1);
+        pt2 = IntPoint((long64)(pt2.X + normals[k].Y *dx),
+          (long64)(pt2.Y -normals[k].X *dx));
+        AddPoint(pt2);
+    }
+    else
+    {
+        AddPoint(pt1);
+        AddPoint(pt2);
+    }
+}
+//------------------------------------------------------------------------------
+
+void DoMiter(int i, int j, double mul)
+{
+    int k;
+    if (j == m_highJ) k = 0; else k = j + 1;
+    double R = 1 + (normals[j].X*normals[k].X + normals[j].Y*normals[k].Y);
+    if (R >= m_RMin)
+    {
+        R = m_delta / R;
+        IntPoint pt1 =
+          IntPoint((long64)(m_p[i][j].X + (normals[j].X + normals[k].X) *R),
+          (long64)(m_p[i][j].Y + (normals[j].Y + normals[k].Y) *R));
+        AddPoint(pt1);
+    }
+    else
+        DoSquare(i, j, mul);
+}
+//------------------------------------------------------------------------------
+
+void DoRound(int i, int j)
+{
+    int k;
+    if (j == m_highJ) k = 0; else k = j + 1;
+    IntPoint pt1 = IntPoint((long64)(m_p[i][j].X + normals[j].X * m_delta),
+        (long64)(m_p[i][j].Y + normals[j].Y * m_delta));
+    IntPoint pt2 = IntPoint((long64)(m_p[i][j].X + normals[k].X * m_delta),
+        (long64)(m_p[i][j].Y + normals[k].Y * m_delta));
+    AddPoint(pt1);
+    //round off reflex angles (ie > 180 deg) unless it's
+    //almost flat (ie < 10deg angle).
+    //cross product normals < 0 -> angle > 180 deg.
+    //dot product normals == 1 -> no angle
+    if ((normals[j].X * normals[k].Y - normals[k].X * normals[j].Y) * m_delta >= 0 &&
+       (normals[k].X * normals[j].X + normals[k].Y * normals[j].Y) < 0.985)
+    {
+      double a1 = std::atan2(normals[j].Y, normals[j].X);
+      double a2 = std::atan2(normals[k].Y, normals[k].X);
+      if (m_delta > 0 && a2 < a1) a2 += pi *2;
+      else if (m_delta < 0 && a2 > a1) a2 -= pi *2;
+      Polygon arc = BuildArc(m_p[i][j], a1, a2, m_delta);
+      for (Polygon::size_type m = 0; m < arc.size(); m++)
+        AddPoint(arc[m]);
+    }
+    AddPoint(pt2);
+}
+//--------------------------------------------------------------------------
+
+}; //class PolyOffsetBuilder
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void OffsetPolygons(const Polygons &in_polys, Polygons &out_polys,
+  double delta, JoinType jointype, double MiterLimit)
+{
+  if (&out_polys == &in_polys)
+  {
+    Polygons poly2(in_polys);
+    PolyOffsetBuilder(poly2, out_polys, delta, jointype, MiterLimit);
+  }
+  else PolyOffsetBuilder(in_polys, out_polys, delta, jointype, MiterLimit);
+}
+//------------------------------------------------------------------------------
+
+}; //polygonclipping namespace
+
+static std::ostream& operator <<(std::ostream &s, polygonclipping::IntPoint& p)
+{
+	s << p.X << ' ' << p.Y << "\n";
+	return s;
+};
+//------------------------------------------------------------------------------
+
+static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygon& p)
+{
+  for (unsigned i=0; i < p.size(); i++)
+    s << p[i];
+  s << "\n";
+  return s;
+};
+//------------------------------------------------------------------------------
+
+static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygons& p)
+{
+  for (unsigned i=0; i < p.size(); i++)
+    s << p[i];
+  s << "\n";
+  return s;
+};
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 

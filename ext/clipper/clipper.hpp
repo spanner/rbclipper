@@ -1,8 +1,8 @@
 /*******************************************************************************
 *                                                                              *
 * Author    :  Angus Johnson                                                   *
-* Version   :  4.4.0                                                           *
-* Date      :  6 August 2011                                                   *
+* Version   :  4.4.2                                                           *
+* Date      :  23 August 2011                                                  *
 * Website   :  http://www.angusj.com                                           *
 * Copyright :  Angus Johnson 2010-2011                                         *
 *                                                                              *
@@ -30,11 +30,16 @@
 #include <stdexcept>
 #include <cstring>
 #include <cstdlib>
+#include <ostream>
 
-namespace clipper {
+namespace polygonclipping {
 
 enum ClipType { ctIntersection, ctUnion, ctDifference, ctXor };
 enum PolyType { ptSubject, ptClip };
+//By far the most widely used winding rules for polygon filling are
+//EvenOdd & NonZero (GDI, GDI+, XLib, OpenGL, Cairo, AGG, Quartz, SVG, Gr32)
+//Others rules include Positive, Negative and ABS_GTR_EQ_TWO (only in OpenGL)
+//see http://www.songho.ca/opengl/gl_tessellation.html#winding_rules
 enum PolyFillType { pftEvenOdd, pftNonZero };
 
 typedef signed long long long64;
@@ -55,9 +60,12 @@ struct ExPolygon {
 };
 typedef std::vector< ExPolygon > ExPolygons;
 
+enum JoinType { jtSquare, jtButt, jtMiter, jtRound };
+
 bool IsClockwise(const Polygon &poly, bool UseFullInt64Range = true);
 double Area(const Polygon &poly, bool UseFullInt64Range = true);
-bool OffsetPolygons(const Polygons &in_pgs, Polygons &out_pgs, const float &delta);
+void OffsetPolygons(const Polygons &in_polys, Polygons &out_polys,
+  double delta, JoinType jointype, double MiterLimit = 0);
 
 //used internally ...
 enum EdgeSide { esLeft, esRight };
@@ -115,6 +123,8 @@ struct OutRec {
   OutRec *AppendLink;
   OutPt  *pts;
   OutPt  *bottomPt;
+  TEdge  *bottomE1;
+  TEdge  *bottomE2;
 };
 
 struct OutPt {
@@ -157,7 +167,7 @@ public:
   bool AddPolygons( const Polygons &ppg, PolyType polyType);
   virtual void Clear();
   IntRect GetBounds();
-  bool UseFullCoordinateRange() {return m_UseFullRange;};
+  bool UseFullCoordinateRange() {return m_UseFullRange;}; //default = false
   void UseFullCoordinateRange(bool newVal);
 protected:
   void DisposeLocalMinimaList();
@@ -228,12 +238,13 @@ private:
   void DoBothEdges(TEdge *edge1, TEdge *edge2, const IntPoint &pt);
   void IntersectEdges(TEdge *e1, TEdge *e2,
     const IntPoint &pt, IntersectProtects protects);
-  void AddOutPt(TEdge *e, const IntPoint &pt);
+  OutRec* CreateOutRec();
+  void AddOutPt(TEdge *e, TEdge *altE, const IntPoint &pt);
   void DisposeAllPolyPts();
   void DisposeOutRec(int index, bool ignorePts = false);
-  bool ProcessIntersections( const long64 topY);
+  bool ProcessIntersections(const long64 botY, const long64 topY);
   void AddIntersectNode(TEdge *e1, TEdge *e2, const IntPoint &pt);
-  void BuildIntersectList(const long64 topY);
+  void BuildIntersectList(const long64 botY, const long64 topY);
   void ProcessIntersectList();
   void ProcessEdgesAtTopOfScanbeam(const long64 topY);
   void BuildResult(Polygons& polys);
@@ -265,9 +276,15 @@ class clipperException : public std::exception
     std::string m_description;
 };
 //------------------------------------------------------------------------------
+} //polygonclipping namespace
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+static std::ostream& operator <<(std::ostream &s, polygonclipping::IntPoint &p);
+static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygon &p);
+static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygons &p);
 //------------------------------------------------------------------------------
 
-} //clipper namespace
 #endif //clipper_hpp
 
 
