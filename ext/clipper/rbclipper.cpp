@@ -1,7 +1,7 @@
 /* 
  * Clipper Ruby Bindings
  * Copyright 2010 Mike Owens <http://mike.filespanker.com/>
- * Changed by Dag Rende for Clipper 4.4.0
+ * Changed by Dag Rende for Clipper 4.4.2
  *
  * Released under the same terms as Clipper.
  *
@@ -20,7 +20,7 @@ using namespace polygonclipping;
 static ID id_even_odd;
 static ID id_non_zero;
 static ID id_polygons;
-static ID id_expolygons;
+static ID id_ex_polygons;
 static ID id_jtSquare;
 static ID id_jtButt;
 static ID id_jtMiter;
@@ -102,7 +102,7 @@ rbclipper_new(VALUE klass)
   Clipper* ptr = new Clipper;
   VALUE r = Data_Wrap_Struct(klass, 0, rbclipper_free, ptr);
   rb_obj_call_init(r, 0, 0);
-  rb_iv_set(r, "@multiplier", INT2NUM(1000));
+  rb_iv_set(r, "@multiplier", INT2NUM(1048576));
   return r;
 }
 
@@ -190,7 +190,29 @@ rbclipper_multiplier_eq(VALUE self, VALUE multiplier)
   return multiplier;
 }
 
-//    void OffsetPolygons(Polygons &in_polys, Polygons &out_polys, double delta, JoinType jointype, double MiterLimit = 0);
+static VALUE
+rbclipper_is_clockwise(VALUE self, VALUE polygonValue)
+{
+    double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+    polygonclipping::Polygon polygon;
+    ary_to_polygon(polygonValue, &polygon, multiplier);
+
+    Polygons resultPolygons;
+    return !polygonclipping::IsClockwise(polygon, XCLIPPER(self)->UseFullCoordinateRange()) ? Qtrue : Qfalse;
+}
+
+static VALUE
+rbclipper_area(VALUE self, VALUE polygonValue)
+{
+    double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+    polygonclipping::Polygon polygon;
+    ary_to_polygon(polygonValue, &polygon, multiplier);
+
+    Polygons resultPolygons;
+    return DBL2NUM(polygonclipping::Area(polygon, XCLIPPER(self)->UseFullCoordinateRange()) / multiplier / multiplier);
+}
+
+
 static VALUE
 rbclipper_offset_polygons(int argc, VALUE* argv, VALUE self) 
 {
@@ -330,7 +352,7 @@ void Init_clipper() {
     id_even_odd = rb_intern("even_odd");
     id_non_zero = rb_intern("non_zero");
     id_polygons = rb_intern("polygons");
-    id_expolygons = rb_intern("expolygons");
+    id_ex_polygons = rb_intern("ex_polygons");
     id_jtSquare = rb_intern("jtSquare");
     id_jtButt = rb_intern("jtButt");
     id_jtMiter = rb_intern("jtMiter");
@@ -342,6 +364,10 @@ void Init_clipper() {
     rb_define_singleton_method(k, "new",
                              (ruby_method) rbclipper_new, 0);
 
+    rb_define_method(k, "clockwise?",
+                   (ruby_method) rbclipper_is_clockwise, 1);
+    rb_define_method(k, "area",
+                   (ruby_method) rbclipper_area, 1);
     rb_define_method(k, "offset_polygons",
                    (ruby_method) rbclipper_offset_polygons, -1);
     rb_define_method(k, "add_subject_polygon",

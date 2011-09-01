@@ -94,29 +94,50 @@ Clipper::Clipper Methods
 
   Multiple subject and clip polygons can be added to the engine for operations.
 
-* `Clipper#add_subject_poly_polygon(poly_polygon)`
+* `Clipper#add_subject_polygons(ex_polygon)`
 
-  `Clipper#add_clip_poly_polygon(poly_polygon)`
+  `Clipper#add_clip_polygons(ex_polygon)`
 
-  Add a "Poly-Polygon" to the engine.  Which is basically a set of polygons.  
-  Boolean operations consider every poly-polygon added in this manner to be the
-  same object.
+  Add an "Ex-Polygon" to the engine.  Which is basically a list of polygons - the first is the 
+  outside (counter-clock-wise) and the rest, if any, are the holes (clock-wise).  
+  Boolean operations consider every ex-polygon added in this manner to be the same object.
 
-* `Clipper#force_orientation`
+* `Clipper#multiplier`
 
-  `Clipper#force_orientation=`
+  `Clipper#multiplier=`
 
-  Defaults to true.  Ensures that the simple result of boolean operations have
-  the orientation as described in section Polygons.  Only useful with simple
-  polygons.
+  Defaults to 2^10 = 1048576. Clipper since version 4.0 uses integer math instead of floating point. 
+  To simplify using floating point coordinates, this multiplier is multiplied to each coordinate value 
+  before beeing sent to Clipper, and each result coordinate is divided by the multiplier. Use 1 if you
+  want to use integer coordinates.
 
-* `Clipper#intersection(subject_fill=:even_odd, clip_fill=:even_odd)`
+* `Clipper#use_full_coordinate_range`
 
-  `Clipper#union(subject_fill=:even_odd, clip_fill=:even_odd)`
+  `Clipper#use_full_coordinate_range=`
 
-  `Clipper#difference(subject_fill=:even_odd, clip_fill=:even_odd)`
+  Defaults to false.  Makes Clipper use 64bit integers for coordinates and calculations instead of 32bit. This slows down execution with about 15%.
 
-  `Clipper#xor(subject_fill=:even_odd, clip_fill=:even_odd)`
+* `Clipper#intersection(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
+
+  `Clipper#union(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
+
+  `Clipper#difference(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
+
+  `Clipper#xor(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
    Performs a boolean operation on the polygons that have been added to the 
-   clipper object.  The result is a list of polygons.
+   clipper object.  The result is a list of polygons or ex-polygons, depending on result_type being :polygons or :ex_polygons
+
+* `Clipper#offset_polygons(polygons, delta, join_type, miter_limit=0)`
+
+  Expands the polygons by delta. Use negative delta to compress the polygons. join_type is any of :jtSquare, :jtButt, :jtMiter or :jtRound. 
+  Use miter_limit to make sharp joints not extend too long, by cutting off the edge. 
+
+* `Clipper#area(polygon)`
+
+  Returns the area of the supplied polygon. The returned area is negative if the polygon points are oriented clockwise, positive otherwise. Obeys the multiplier and use_full_coordinate_range settings for the clipper object.
+
+* `Clipper#clockwise?(polygon)`
+
+  True only if the supplied polygon points are oriented clockwise. Obeys the multiplier and use_full_coordinate_range settings for the clipper object.
+
