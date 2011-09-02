@@ -4,7 +4,7 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 2.9 of Clipper.
+This release contains version 4.4.2 of Clipper.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
@@ -85,7 +85,7 @@ Clipper::Clipper Methods
 
 * `Clipper#add_subject_polygon(polygon)`
 
-  `Clipper#add_clip_polygon(polygon)`
+* `Clipper#add_clip_polygon(polygon)`
 
   Adds a subject or clip polygon to the engine.  Boolean operations are 
   calculated as `SUBJECT` *operatation* `CLIP`.  Multiple polygons can Pay attention 
@@ -94,17 +94,17 @@ Clipper::Clipper Methods
 
   Multiple subject and clip polygons can be added to the engine for operations.
 
-* `Clipper#add_subject_polygons(ex_polygon)`
+* `Clipper#add_subject_polygons(expolygon)`
 
-  `Clipper#add_clip_polygons(ex_polygon)`
+* `Clipper#add_clip_polygons(expolygon)`
 
-  Add an "Ex-Polygon" to the engine.  Which is basically a list of polygons - the first is the 
+  Add an "ExPolygon" to the engine.  Which is basically a list of polygons - the first is the 
   outside (counter-clock-wise) and the rest, if any, are the holes (clock-wise).  
-  Boolean operations consider every ex-polygon added in this manner to be the same object.
+  Boolean operations consider every expolygon added in this manner to be the same object.
 
 * `Clipper#multiplier`
 
-  `Clipper#multiplier=`
+* `Clipper#multiplier=`
 
   Defaults to 2^10 = 1048576. Clipper since version 4.0 uses integer math instead of floating point. 
   To simplify using floating point coordinates, this multiplier is multiplied to each coordinate value 
@@ -113,20 +113,20 @@ Clipper::Clipper Methods
 
 * `Clipper#use_full_coordinate_range`
 
-  `Clipper#use_full_coordinate_range=`
+* `Clipper#use_full_coordinate_range=`
 
   Defaults to false.  Makes Clipper use 64bit integers for coordinates and calculations instead of 32bit. This slows down execution with about 15%.
 
 * `Clipper#intersection(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
-  `Clipper#union(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
+* `Clipper#union(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
-  `Clipper#difference(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
+* `Clipper#difference(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
-  `Clipper#xor(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
+* `Clipper#xor(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
    Performs a boolean operation on the polygons that have been added to the 
-   clipper object.  The result is a list of polygons or ex-polygons, depending on result_type being :polygons or :ex_polygons
+   clipper object.  The result is a list of polygons or expolygons, depending on result_type being :polygons or :expolygons
 
 * `Clipper#offset_polygons(polygons, delta, join_type, miter_limit=0)`
 

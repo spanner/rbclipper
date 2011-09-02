@@ -352,7 +352,7 @@ void Init_clipper() {
     id_even_odd = rb_intern("even_odd");
     id_non_zero = rb_intern("non_zero");
     id_polygons = rb_intern("polygons");
-    id_ex_polygons = rb_intern("ex_polygons");
+    id_ex_polygons = rb_intern("expolygons");
     id_jtSquare = rb_intern("jtSquare");
     id_jtButt = rb_intern("jtButt");
     id_jtMiter = rb_intern("jtMiter");
