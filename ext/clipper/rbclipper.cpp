@@ -1,7 +1,7 @@
 /* 
  * Clipper Ruby Bindings
  * Copyright 2010 Mike Owens <http://mike.filespanker.com/>
- * Changed by Dag Rende for Clipper 4.4.2
+ * Changed by Dag Rende for Clipper after 2.9
  *
  * Released under the same terms as Clipper.
  *
@@ -15,7 +15,7 @@
 #endif
 
 using namespace std;
-using namespace polygonclipping;
+using namespace ClipperLib;
 
 static ID id_even_odd;
 static ID id_non_zero;
@@ -69,7 +69,7 @@ sym_to_jointype(VALUE sym)
 extern "C" {
 
 static void
-ary_to_polygon(VALUE ary, polygonclipping::Polygon* poly, double multiplier)
+ary_to_polygon(VALUE ary, ClipperLib::Polygon* poly, double multiplier)
 {
   const char* earg =
     "Polygons have format: [[p0_x, p0_y], [p1_x, p1_y], ...]";
@@ -110,7 +110,7 @@ static VALUE
 rbclipper_add_polygon_internal(VALUE self, VALUE polygon,
                                PolyType polytype)
 {
-  polygonclipping::Polygon tmp;
+  ClipperLib::Polygon tmp;
   double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
   ary_to_polygon(polygon, &tmp, multiplier);
   XCLIPPER(self)->AddPolygon(tmp, polytype);
@@ -125,7 +125,7 @@ rbclipper_add_polygons_internal(VALUE self, VALUE polygonsValue, PolyType polyty
     VALUE sub = rb_ary_entry(polygonsValue, i);
     Check_Type(sub, T_ARRAY);
 
-    polygonclipping::Polygon tmp;
+    ClipperLib::Polygon tmp;
     ary_to_polygon(sub, &tmp, multiplier);
     polygons.push_back(tmp);
   }
@@ -194,22 +194,22 @@ static VALUE
 rbclipper_is_clockwise(VALUE self, VALUE polygonValue)
 {
     double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
-    polygonclipping::Polygon polygon;
+    ClipperLib::Polygon polygon;
     ary_to_polygon(polygonValue, &polygon, multiplier);
 
     Polygons resultPolygons;
-    return !polygonclipping::IsClockwise(polygon, XCLIPPER(self)->UseFullCoordinateRange()) ? Qtrue : Qfalse;
+    return ClipperLib::IsClockwise(polygon, XCLIPPER(self)->UseFullCoordinateRange()) ? Qtrue : Qfalse;
 }
 
 static VALUE
 rbclipper_area(VALUE self, VALUE polygonValue)
 {
     double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
-    polygonclipping::Polygon polygon;
+    ClipperLib::Polygon polygon;
     ary_to_polygon(polygonValue, &polygon, multiplier);
 
     Polygons resultPolygons;
-    return DBL2NUM(polygonclipping::Area(polygon, XCLIPPER(self)->UseFullCoordinateRange()) / multiplier / multiplier);
+    return DBL2NUM(ClipperLib::Area(polygon, XCLIPPER(self)->UseFullCoordinateRange()) / multiplier / multiplier);
 }
 
 
@@ -227,7 +227,7 @@ rbclipper_offset_polygons(int argc, VALUE* argv, VALUE self)
         VALUE sub = rb_ary_entry(polygonsValue, i);
         Check_Type(sub, T_ARRAY);
 
-        polygonclipping::Polygon tmp;
+        ClipperLib::Polygon tmp;
         ary_to_polygon(sub, &tmp, multiplier);
         polygons.push_back(tmp);
     }
@@ -237,7 +237,7 @@ rbclipper_offset_polygons(int argc, VALUE* argv, VALUE self)
     }
 
     Polygons resultPolygons;
-    polygonclipping::OffsetPolygons(polygons, resultPolygons, NUM2DBL(deltaValue) * multiplier, sym_to_jointype(joinTypeValue), miterLimit * multiplier);
+    ClipperLib::OffsetPolygons(polygons, resultPolygons, NUM2DBL(deltaValue) * multiplier, sym_to_jointype(joinTypeValue), miterLimit * multiplier);
 
     VALUE r = rb_ary_new();
     for(Polygons::iterator i = resultPolygons.begin(); i != resultPolygons.end(); ++i) {

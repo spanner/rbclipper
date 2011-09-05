@@ -4,7 +4,7 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 4.4.2 of Clipper.
+This release contains version 4.4.3 of Clipper.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
@@ -139,5 +139,5 @@ Clipper::Clipper Methods
 
 * `Clipper#clockwise?(polygon)`
 
-  True only if the supplied polygon points are oriented clockwise. Obeys the multiplier and use_full_coordinate_range settings for the clipper object.
+  True only if the supplied polygon points are oriented clockwise. Obeys the multiplier and use_full_coordinate_range settings for the clipper object. Remember that X point right and Y points down.
 

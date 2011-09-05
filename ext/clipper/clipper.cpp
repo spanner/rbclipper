@@ -1,8 +1,8 @@
 /*******************************************************************************
 *                                                                              *
 * Author    :  Angus Johnson                                                   *
-* Version   :  4.4.2                                                           *
-* Date      :  23 August 2011                                                  *
+* Version   :  4.4.3                                                           *
+* Date      :  29 August 2011                                                  *
 * Website   :  http://www.angusj.com                                           *
 * Copyright :  Angus Johnson 2010-2011                                         *
 *                                                                              *
@@ -46,7 +46,7 @@ namespace std
 }
 #endif
 
-namespace polygonclipping {
+namespace ClipperLib {
 
 static double const horizontal = -3.4E+38;
 static double const pi = 3.141592653589793238;
@@ -542,7 +542,7 @@ long64 TopX(const IntPoint pt1, const IntPoint pt2, const long64 currentY)
   else
   {
     double q = (double)(pt1.X-pt2.X)/(double)(pt1.Y-pt2.Y);
-    return static_cast<long64>(pt1.X + (currentY - pt1.Y) *q);
+    return Round(pt1.X + (currentY - pt1.Y) *q);
   }
 }
 //------------------------------------------------------------------------------
@@ -2950,7 +2950,6 @@ PolyOffsetBuilder(const Polygons& in_polys, Polygons& out_polys,
 
     this->m_p = in_polys;
     this->m_delta = delta;
-
     this->m_jointype = jointype;
     //MiterLimit defaults to 2 times delta's size ...
     if (MiterLimit <= 0) MiterLimit = 2;
@@ -3046,10 +3045,10 @@ void DoButt(int i, int j)
 {
     int k;
     if (j == m_highJ) k = 0; else k = j + 1;
-    IntPoint pt1 = IntPoint((long64)(m_p[i][j].X + normals[j].X * m_delta),
-        (long64)(m_p[i][j].Y + normals[j].Y * m_delta));
-    IntPoint pt2 = IntPoint((long64)(m_p[i][j].X + normals[k].X * m_delta),
-        (long64)(m_p[i][j].Y + normals[k].Y * m_delta));
+    IntPoint pt1 = IntPoint((long64)Round(m_p[i][j].X + normals[j].X * m_delta),
+        (long64)Round(m_p[i][j].Y + normals[j].Y * m_delta));
+    IntPoint pt2 = IntPoint((long64)Round(m_p[i][j].X + normals[k].X * m_delta),
+        (long64)Round(m_p[i][j].Y + normals[k].Y * m_delta));
     AddPoint(pt1);
     AddPoint(pt2);
 }
@@ -3059,10 +3058,10 @@ void DoSquare(int i, int j, double mul)
 {
     int k;
     if (j == m_highJ) k = 0; else k = j + 1;
-    IntPoint pt1 = IntPoint((long64)(m_p[i][j].X + normals[j].X * m_delta),
-        (long64)(m_p[i][j].Y + normals[j].Y * m_delta));
-    IntPoint pt2 = IntPoint((long64)(m_p[i][j].X + normals[k].X * m_delta),
-        (long64)(m_p[i][j].Y + normals[k].Y * m_delta));
+    IntPoint pt1 = IntPoint((long64)Round(m_p[i][j].X + normals[j].X * m_delta),
+        (long64)Round(m_p[i][j].Y + normals[j].Y * m_delta));
+    IntPoint pt2 = IntPoint((long64)Round(m_p[i][j].X + normals[k].X * m_delta),
+        (long64)Round(m_p[i][j].Y + normals[k].Y * m_delta));
     if ((normals[j].X * normals[k].Y - normals[k].X * normals[j].Y) * m_delta >= 0)
     {
         double a1 = std::atan2(normals[j].Y, normals[j].X);
@@ -3094,8 +3093,8 @@ void DoMiter(int i, int j, double mul)
     {
         R = m_delta / R;
         IntPoint pt1 =
-          IntPoint((long64)(m_p[i][j].X + (normals[j].X + normals[k].X) *R),
-          (long64)(m_p[i][j].Y + (normals[j].Y + normals[k].Y) *R));
+          IntPoint((long64)Round(m_p[i][j].X + (normals[j].X + normals[k].X) *R),
+          (long64)Round(m_p[i][j].Y + (normals[j].Y + normals[k].Y) *R));
         AddPoint(pt1);
     }
     else
@@ -3107,10 +3106,10 @@ void DoRound(int i, int j)
 {
     int k;
     if (j == m_highJ) k = 0; else k = j + 1;
-    IntPoint pt1 = IntPoint((long64)(m_p[i][j].X + normals[j].X * m_delta),
-        (long64)(m_p[i][j].Y + normals[j].Y * m_delta));
-    IntPoint pt2 = IntPoint((long64)(m_p[i][j].X + normals[k].X * m_delta),
-        (long64)(m_p[i][j].Y + normals[k].Y * m_delta));
+    IntPoint pt1 = IntPoint((long64)Round(m_p[i][j].X + normals[j].X * m_delta),
+        (long64)Round(m_p[i][j].Y + normals[j].Y * m_delta));
+    IntPoint pt2 = IntPoint((long64)Round(m_p[i][j].X + normals[k].X * m_delta),
+        (long64)Round(m_p[i][j].Y + normals[k].Y * m_delta));
     AddPoint(pt1);
     //round off reflex angles (ie > 180 deg) unless it's
     //almost flat (ie < 10deg angle).
@@ -3148,16 +3147,16 @@ void OffsetPolygons(const Polygons &in_polys, Polygons &out_polys,
 }
 //------------------------------------------------------------------------------
 
-}; //polygonclipping namespace
+}; //ClipperLib namespace
 
-static std::ostream& operator <<(std::ostream &s, polygonclipping::IntPoint& p)
+static std::ostream& operator <<(std::ostream &s, ClipperLib::IntPoint& p)
 {
 	s << p.X << ' ' << p.Y << "\n";
 	return s;
 };
 //------------------------------------------------------------------------------
 
-static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygon& p)
+static std::ostream& operator <<(std::ostream &s, ClipperLib::Polygon& p)
 {
   for (unsigned i=0; i < p.size(); i++)
     s << p[i];
@@ -3166,7 +3165,7 @@ static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygon& p)
 };
 //------------------------------------------------------------------------------
 
-static std::ostream& operator <<(std::ostream &s, polygonclipping::Polygons& p)
+static std::ostream& operator <<(std::ostream &s, ClipperLib::Polygons& p)
 {
   for (unsigned i=0; i < p.size(); i++)
     s << p[i];
