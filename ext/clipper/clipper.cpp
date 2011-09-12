@@ -1,8 +1,8 @@
 /*******************************************************************************
 *                                                                              *
 * Author    :  Angus Johnson                                                   *
-* Version   :  4.4.3                                                           *
-* Date      :  29 August 2011                                                  *
+* Version   :  4.4.4                                                           *
+* Date      :  4 September 2011                                                *
 * Website   :  http://www.angusj.com                                           *
 * Copyright :  Angus Johnson 2010-2011                                         *
 *                                                                              *
@@ -37,6 +37,7 @@
 #include <stdexcept>
 #include <cstring>
 #include <cstdlib>
+#include <ostream>
 
 //Workaround for older compilers that don't have std::abs
 #if (__GNUC__ == 2 && __GNUC_MINOR__ <= 97) || (defined(_MSC_VER) && _MSC_VER <= 1500)
@@ -2879,6 +2880,19 @@ void Clipper::JoinCommonEdges()
     }
   }
 }
+//------------------------------------------------------------------------------
+
+void ReversePoints(Polygon& p)
+{
+	std::reverse(p.begin(), p.end());
+};
+//------------------------------------------------------------------------------
+
+void ReversePoints(Polygons& p)
+{
+  for (Polygons::size_type i = 0; i < p.size(); ++i)
+    ReversePoints(p[i]);
+};
 
 //------------------------------------------------------------------------------
 // OffsetPolygon functions ...
@@ -2951,8 +2965,7 @@ PolyOffsetBuilder(const Polygons& in_polys, Polygons& out_polys,
     this->m_p = in_polys;
     this->m_delta = delta;
     this->m_jointype = jointype;
-    //MiterLimit defaults to 2 times delta's size ...
-    if (MiterLimit <= 0) MiterLimit = 2;
+    if (MiterLimit <= 1) MiterLimit = 1;
     m_RMin = 2/(MiterLimit*MiterLimit);
 
     double deltaSq = delta*delta;
@@ -2989,9 +3002,6 @@ PolyOffsetBuilder(const Polygons& in_polys, Polygons& out_polys,
 
         switch (jointype)
         {
-            case jtButt:
-                for (int j = 0; j < len; ++j) DoButt(i, j);
-                break;
             case jtMiter:
                 for (int j = 0; j < len; ++j) DoMiter(i, j, MiterLimit);
                 break;
@@ -3024,6 +3034,8 @@ PolyOffsetBuilder(const Polygons& in_polys, Polygons& out_polys,
         if (clpr.Execute(ctUnion, out_polys, pftNonZero, pftNonZero))
         {
             out_polys.erase(out_polys.begin());
+            ReversePoints(out_polys);
+
         } else
             out_polys.clear();
     }
@@ -3038,19 +3050,6 @@ void AddPoint(IntPoint& pt)
     if (len == m_curr_poly->capacity())
         m_curr_poly->reserve(len + buffLength);
     m_curr_poly->push_back(pt);
-}
-//------------------------------------------------------------------------------
-
-void DoButt(int i, int j)
-{
-    int k;
-    if (j == m_highJ) k = 0; else k = j + 1;
-    IntPoint pt1 = IntPoint((long64)Round(m_p[i][j].X + normals[j].X * m_delta),
-        (long64)Round(m_p[i][j].Y + normals[j].Y * m_delta));
-    IntPoint pt2 = IntPoint((long64)Round(m_p[i][j].X + normals[k].X * m_delta),
-        (long64)Round(m_p[i][j].Y + normals[k].Y * m_delta));
-    AddPoint(pt1);
-    AddPoint(pt2);
 }
 //------------------------------------------------------------------------------
 
@@ -3147,31 +3146,29 @@ void OffsetPolygons(const Polygons &in_polys, Polygons &out_polys,
 }
 //------------------------------------------------------------------------------
 
-}; //ClipperLib namespace
-
-static std::ostream& operator <<(std::ostream &s, ClipperLib::IntPoint& p)
+std::ostream& operator <<(std::ostream &s, IntPoint& p)
 {
 	s << p.X << ' ' << p.Y << "\n";
 	return s;
 };
 //------------------------------------------------------------------------------
 
-static std::ostream& operator <<(std::ostream &s, ClipperLib::Polygon& p)
+std::ostream& operator <<(std::ostream &s, Polygon &p)
 {
-  for (unsigned i=0; i < p.size(); i++)
-    s << p[i];
-  s << "\n";
-  return s;
-};
+	for (unsigned i = 0; i < p.size(); i++)
+		s << p[i];
+	s << "\n";
+	return s;
+}
 //------------------------------------------------------------------------------
 
-static std::ostream& operator <<(std::ostream &s, ClipperLib::Polygons& p)
+std::ostream& operator <<(std::ostream &s, Polygons &p)
 {
-  for (unsigned i=0; i < p.size(); i++)
-    s << p[i];
-  s << "\n";
-  return s;
-};
-//------------------------------------------------------------------------------
+	for (unsigned i = 0; i < p.size(); i++)
+		s << p[i];
+	s << "\n";
+	return s;
+}
 //------------------------------------------------------------------------------
 
+}; //ClipperLib namespace

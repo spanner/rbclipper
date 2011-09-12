@@ -22,7 +22,6 @@ static ID id_non_zero;
 static ID id_polygons;
 static ID id_ex_polygons;
 static ID id_jtSquare;
-static ID id_jtButt;
 static ID id_jtMiter;
 static ID id_jtRound;
 
@@ -55,15 +54,13 @@ sym_to_jointype(VALUE sym)
 
   if (inp == id_jtSquare) {
     return jtSquare;
-  } else if (inp == id_jtButt) {
-    return jtButt;
   } else if (inp == id_jtMiter) {
     return jtMiter;
   } else if (inp == id_jtRound) {
     return jtRound;
   }
 
-  rb_raise(rb_eArgError, "%s", "Expected :jtSquare, :jtButt, :jtMiter or :jtRound");
+  rb_raise(rb_eArgError, "%s", "Expected :jtSquare, :jtMiter or :jtRound");
 }
 
 extern "C" {
@@ -354,7 +351,6 @@ void Init_clipper() {
     id_polygons = rb_intern("polygons");
     id_ex_polygons = rb_intern("expolygons");
     id_jtSquare = rb_intern("jtSquare");
-    id_jtButt = rb_intern("jtButt");
     id_jtMiter = rb_intern("jtMiter");
     id_jtRound = rb_intern("jtRound");
 
