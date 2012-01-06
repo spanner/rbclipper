@@ -4,7 +4,7 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 4.4.3 of Clipper.
+This release contains version 4.6.3 of Clipper.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
@@ -76,6 +76,16 @@ Fill Types
     A point is considered inside the polygon if the number of edge-crossings to 
     get there is greater than zero.
 
+  * `:positive`
+
+    See Clipper Homepage.
+
+  * `:negative`
+
+    See Clipper Homepage.
+
+
+
 Clipper::Clipper Methods
 -------
 
@@ -111,12 +121,6 @@ Clipper::Clipper Methods
   before beeing sent to Clipper, and each result coordinate is divided by the multiplier. Use 1 if you
   want to use integer coordinates.
 
-* `Clipper#use_full_coordinate_range`
-
-* `Clipper#use_full_coordinate_range=`
-
-  Defaults to false.  Makes Clipper use 64bit integers for coordinates and calculations instead of 32bit. This slows down execution with about 15%.
-
 * `Clipper#intersection(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
 * `Clipper#union(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
@@ -137,7 +141,11 @@ Clipper::Clipper Methods
 
   Returns the area of the supplied polygon. The returned area is negative if the polygon points are oriented clockwise, positive otherwise. Obeys the multiplier and use_full_coordinate_range settings for the clipper object.
 
-* `Clipper#clockwise?(polygon)`
+* `Clipper#Orientation(polygon)`
 
-  True only if the supplied polygon points are oriented clockwise. Obeys the multiplier and use_full_coordinate_range settings for the clipper object. Remember that X point right and Y points down.
+  Orientation returns a boolean value that is based on the polygon's orientation relative to the display's orientation (ie Y-axis positive upward vs Y-axis positive downward). 
+
+* On Y-axis positive upward displays, Orientation will return true if the polygon's orientation is counter-clockwise. 
+* On Y-axis positive downward displays, Orientation will return true if the polygon's orientation is clockwise. 
+
 
