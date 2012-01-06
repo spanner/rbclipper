@@ -12,7 +12,6 @@ Gem::Specification.new do |s|
   s.summary     = "Ruby wrapper for Clipper, Angus Johnson's excellent polygon clipping library"
   s.description = "Builds a native ruby extension for Clipper"
 
-  s.has_rdoc          = true
   s.extra_rdoc_files  = %w(README.md Changelog ext/clipper/rbclipper.cpp)
   s.rdoc_options.concat %w(--main=README.md)
 

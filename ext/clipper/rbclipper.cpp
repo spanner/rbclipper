@@ -19,6 +19,8 @@ using namespace ClipperLib;
 
 static ID id_even_odd;
 static ID id_non_zero;
+static ID id_positive;
+static ID id_negative;
 static ID id_polygons;
 static ID id_ex_polygons;
 static ID id_jtSquare;
@@ -42,9 +44,13 @@ sym_to_filltype(VALUE sym)
     return pftEvenOdd;
   } else if (inp == id_non_zero) {
     return pftNonZero;
+  } else if (inp == id_positive) {
+    return pftPositive;
+  } else if (inp == id_negative) {
+    return pftNegative;
   }
 
-  rb_raise(rb_eArgError, "%s", "Expected :even_odd or :non_zero");
+  rb_raise(rb_eArgError, "%s", "Expected :even_odd, :non_zero, :positive or :negative");
 }
 
 static inline JoinType
@@ -162,19 +168,6 @@ rbclipper_clear(VALUE self)
 }
 
 static VALUE
-rbclipper_use_full_coordinate_range(VALUE self)
-{
-  return XCLIPPER(self)->UseFullCoordinateRange() ? Qtrue : Qfalse;
-}
-
-static VALUE
-rbclipper_use_full_coordinate_range_eq(VALUE self, VALUE b)
-{
-  XCLIPPER(self)->UseFullCoordinateRange(b == Qtrue);
-  return b;
-}
-
-static VALUE
 rbclipper_multiplier(VALUE self)
 {
   return rb_iv_get(self, "@multiplier");
@@ -188,14 +181,14 @@ rbclipper_multiplier_eq(VALUE self, VALUE multiplier)
 }
 
 static VALUE
-rbclipper_is_clockwise(VALUE self, VALUE polygonValue)
+rbclipper_orientation(VALUE self, VALUE polygonValue)
 {
     double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
     ClipperLib::Polygon polygon;
     ary_to_polygon(polygonValue, &polygon, multiplier);
 
     Polygons resultPolygons;
-    return ClipperLib::IsClockwise(polygon, XCLIPPER(self)->UseFullCoordinateRange()) ? Qtrue : Qfalse;
+    return ClipperLib::Orientation(polygon) ? Qtrue : Qfalse;
 }
 
 static VALUE
@@ -206,7 +199,7 @@ rbclipper_area(VALUE self, VALUE polygonValue)
     ary_to_polygon(polygonValue, &polygon, multiplier);
 
     Polygons resultPolygons;
-    return DBL2NUM(ClipperLib::Area(polygon, XCLIPPER(self)->UseFullCoordinateRange()) / multiplier / multiplier);
+    return DBL2NUM(ClipperLib::Area(polygon) / multiplier / multiplier);
 }
 
 
@@ -348,6 +341,8 @@ typedef VALUE (*ruby_method)(...);
 void Init_clipper() {
     id_even_odd = rb_intern("even_odd");
     id_non_zero = rb_intern("non_zero");
+    id_positive = rb_intern("positive");
+    id_negative = rb_intern("negative");
     id_polygons = rb_intern("polygons");
     id_ex_polygons = rb_intern("expolygons");
     id_jtSquare = rb_intern("jtSquare");
@@ -360,8 +355,8 @@ void Init_clipper() {
     rb_define_singleton_method(k, "new",
                              (ruby_method) rbclipper_new, 0);
 
-    rb_define_method(k, "clockwise?",
-                   (ruby_method) rbclipper_is_clockwise, 1);
+    rb_define_method(k, "orientation",
+                   (ruby_method) rbclipper_orientation, 1);
     rb_define_method(k, "area",
                    (ruby_method) rbclipper_area, 1);
     rb_define_method(k, "offset_polygons",
@@ -376,10 +371,6 @@ void Init_clipper() {
                    (ruby_method) rbclipper_add_clip_polygons, 1);
     rb_define_method(k, "clear!",
                    (ruby_method) rbclipper_clear, 0);
-    rb_define_method(k, "use_full_coordinate_range",
-                   (ruby_method) rbclipper_use_full_coordinate_range, 0);
-    rb_define_method(k, "use_full_coordinate_range=",
-                   (ruby_method) rbclipper_use_full_coordinate_range_eq, 1);
     rb_define_method(k, "intersection",
                    (ruby_method) rbclipper_intersection, -1);
     rb_define_method(k, "union",
