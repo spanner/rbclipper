@@ -4,14 +4,14 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 4.6.3 of Clipper.
+This release contains version 5.0.1 of Clipper.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
 
 To install:
 
-    gem install clipper
+    gem install ruby_clipper
 
 Build locally:
 
