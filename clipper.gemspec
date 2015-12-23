@@ -1,7 +1,7 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'vector_salad/version'
+require File.expand_path("../lib/clipper/version", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "ruby_clipper"
@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.homepage    = "http://github.com/sfcgeorge/rbclipper"
   s.summary     = "Ruby wrapper for Clipper, Angus Johnson's excellent polygon clipping library"
   s.description = "Builds a native ruby extension for Clipper"
-  s.licence     = "Boost Software License - Version 1.0"
+  s.licenses     = "Boost Software License - Version 1.0"
 
   s.extra_rdoc_files  = %w(README.md Changelog ext/clipper/rbclipper.cpp)
   s.rdoc_options.concat %w(--main=README.md)

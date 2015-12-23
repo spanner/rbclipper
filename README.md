@@ -4,7 +4,7 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 5.0.1 of Clipper.
+This release contains version 6.2.1 of Clipper.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
@@ -15,7 +15,7 @@ To install:
 
 Build locally:
 
-    rake install 
+    rake install
 
 
 Simple Usage:
@@ -48,18 +48,18 @@ bindings can be accessed by:
 
 Polygons
 --------
-Operations that accept or return polygons are specified as an array of `[x,y]` 
+Operations that accept or return polygons are specified as an array of `[x,y]`
 coordinates, for example, to specify a triangle:
 
     triangle = [[0,0], [0,100], [50, -100]]
 
-Clipper supports both holes and complex polygons.  Coordinates for output 
+Clipper supports both holes and complex polygons.  Coordinates for output
 polygons are clockwise for shells, and and counter-clockwise for holes.
 See force_orientation.
 
-Note that since 2.8, Clipper defines orientation with respect to a 
-_downward-increasing Y axis_, similar to how many 2D GUI/drawing APIs position 
-coordinate (0,0) at the top-left corner.  The bindings have followed Clipper 
+Note that since 2.8, Clipper defines orientation with respect to a
+_downward-increasing Y axis_, similar to how many 2D GUI/drawing APIs position
+coordinate (0,0) at the top-left corner.  The bindings have followed Clipper
 proper in this regard.
 
 Multiple polygons are represented as simply an array of polygons.
@@ -68,12 +68,12 @@ Fill Types
 -----------
   * `:even_odd`
 
-    A point is considered inside the polygon if the number of edge-crossings to 
+    A point is considered inside the polygon if the number of edge-crossings to
     get there from outside the shape is an even number.
 
   * `:non_zero`
 
-    A point is considered inside the polygon if the number of edge-crossings to 
+    A point is considered inside the polygon if the number of edge-crossings to
     get there is greater than zero.
 
   * `:positive`
@@ -97,8 +97,8 @@ Clipper::Clipper Methods
 
 * `Clipper#add_clip_polygon(polygon)`
 
-  Adds a subject or clip polygon to the engine.  Boolean operations are 
-  calculated as `SUBJECT` *operatation* `CLIP`.  Multiple polygons can Pay attention 
+  Adds a subject or clip polygon to the engine.  Boolean operations are
+  calculated as `SUBJECT` *operatation* `CLIP`.  Multiple polygons can Pay attention
   to the orientation of the coordinates given; counter-clockwise for shells and
   clockwise for holes.
 
@@ -108,7 +108,7 @@ Clipper::Clipper Methods
 
 * `Clipper#add_clip_polygons(expolygon)`
 
-  Add an "ExPolygon" to the engine.  Which is basically a list of polygons - the first is the 
+  Add an "ExPolygon" to the engine.  Which is basically a list of polygons - the first is the
   outside (counter-clock-wise) and the rest, if any, are the holes (clock-wise).  
   Boolean operations consider every expolygon added in this manner to be the same object.
 
@@ -116,8 +116,8 @@ Clipper::Clipper Methods
 
 * `Clipper#multiplier=`
 
-  Defaults to 2^10 = 1048576. Clipper since version 4.0 uses integer math instead of floating point. 
-  To simplify using floating point coordinates, this multiplier is multiplied to each coordinate value 
+  Defaults to 2^10 = 1048576. Clipper since version 4.0 uses integer math instead of floating point.
+  To simplify using floating point coordinates, this multiplier is multiplied to each coordinate value
   before beeing sent to Clipper, and each result coordinate is divided by the multiplier. Use 1 if you
   want to use integer coordinates.
 
@@ -129,13 +129,13 @@ Clipper::Clipper Methods
 
 * `Clipper#xor(subject_fill=:even_odd, clip_fill=:even_odd, result_type=:polygons)`
 
-   Performs a boolean operation on the polygons that have been added to the 
+   Performs a boolean operation on the polygons that have been added to the
    clipper object.  The result is a list of polygons or expolygons, depending on result_type being :polygons or :expolygons
 
 * `Clipper#offset_polygons(polygons, delta, join_type, miter_limit=0)`
 
-  Expands the polygons by delta. Use negative delta to compress the polygons. join_type is any of :jtSquare, :jtButt, :jtMiter or :jtRound. 
-  Use miter_limit to make sharp joints not extend too long, by cutting off the edge. 
+  Expands the polygons by delta. Use negative delta to compress the polygons. join_type is any of :jtSquare, :jtButt, :jtMiter or :jtRound.
+  Use miter_limit to make sharp joints not extend too long, by cutting off the edge.
 
 * `Clipper#area(polygon)`
 
@@ -143,9 +143,7 @@ Clipper::Clipper Methods
 
 * `Clipper#Orientation(polygon)`
 
-  Orientation returns a boolean value that is based on the polygon's orientation relative to the display's orientation (ie Y-axis positive upward vs Y-axis positive downward). 
+  Orientation returns a boolean value that is based on the polygon's orientation relative to the display's orientation (ie Y-axis positive upward vs Y-axis positive downward).
 
-* On Y-axis positive upward displays, Orientation will return true if the polygon's orientation is counter-clockwise. 
-* On Y-axis positive downward displays, Orientation will return true if the polygon's orientation is clockwise. 
-
-
+* On Y-axis positive upward displays, Orientation will return true if the polygon's orientation is counter-clockwise.
+* On Y-axis positive downward displays, Orientation will return true if the polygon's orientation is clockwise.
