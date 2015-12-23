@@ -104,6 +104,14 @@ sym_to_jointype(VALUE sym)
 
 extern "C" {
 
+struct IntPoint
+xy_to_intpoint(VALUE px, VALUE py, VALUE multiplier) {
+  multiplier = NUM2DBL(multiplier);
+  return IntPoint(
+    (long64)(NUM2DBL(px) * multiplier), (long64)(NUM2DBL(py) * multiplier)
+  );
+}
+
 static void
 ary_to_polygon(VALUE ary, ClipperLib::Path* poly, double multiplier)
 {
@@ -258,6 +266,14 @@ rbclipper_area(VALUE self, VALUE polygonValue)
     return DBL2NUM(ClipperLib::Area(polygon) / multiplier / multiplier);
 }
 
+static VALUE
+rbclipper_point_in_polygon(VALUE self, VALUE px, VALUE py, VALUE polygonValue)
+{
+  double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+  ClipperLib::Path polygon;
+  ary_to_polygon(polygonValue, &polygon, multiplier);
+  return ClipperLib::PointInPolygon(xy_to_intpoint(px, py, multiplier), polygon) == 1 ? Qtrue : Qfalse;
+}
 
 static VALUE
 rbclipper_offset_polygons(int argc, VALUE* argv, VALUE self)
@@ -364,13 +380,6 @@ rbclipper_xor(int argc, VALUE* argv, VALUE self)
   return rbclipper_execute_internal(self, ctXor, subjfill, clipfill, resulttype);
 }
 
-static IntPoint to_intPt(VALUE px, VALUE py, VALUE multiplier) {
-  multiplier = NUM2DBL(multiplier);
-  return IntPoint(
-    (long64)(NUM2DBL(px) * multiplier), (long64)(NUM2DBL(py) * multiplier)
-  );
-}
-
 typedef VALUE (*ruby_method)(...);
 
 void Init_clipper() {
@@ -398,6 +407,8 @@ void Init_clipper() {
 
     rb_define_method(k, "orientation",
                    (ruby_method) rbclipper_orientation, 1);
+    rb_define_method(k, "pt_in_polygon",
+                   (ruby_method) rbclipper_point_in_polygon, 3);
     rb_define_method(k, "area",
                    (ruby_method) rbclipper_area, 1);
     // rb_define_method(k, "offset_polygons",
