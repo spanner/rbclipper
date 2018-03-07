@@ -338,13 +338,24 @@ rbclipper_execute_internal(VALUE self, ClipType cliptype,
 
   VALUE r = rb_ary_new();
   if (resulttype == ID2SYM(id_polygons)) {
+      PolyTree polytree;
       Paths solution;
       XCLIPPER(self)->Execute((ClipType) cliptype,
-                              solution,
+                              polytree,
                               sym_to_filltype(subjfill),
                               sym_to_filltype(clipfill));
+      ClosedPathsFromPolyTree(polytree, solution);
       for(Paths::iterator i = solution.begin(); i != solution.end(); ++i) {
         VALUE sub = rb_ary_new();
+        for(Path::iterator p = i->begin(); p != i->end(); ++p) {
+          rb_ary_push(sub, rb_ary_new3(2, DBL2NUM(p->X * inv_multiplier), DBL2NUM(p->Y * inv_multiplier)));
+        }
+        rb_ary_push(r, sub);
+      }
+      OpenPathsFromPolyTree(polytree, solution);
+      for(Paths::iterator i = solution.begin(); i != solution.end(); ++i) {
+        VALUE sub = rb_ary_new();
+        rb_ary_push(sub, Qnil);
         for(Path::iterator p = i->begin(); p != i->end(); ++p) {
           rb_ary_push(sub, rb_ary_new3(2, DBL2NUM(p->X * inv_multiplier), DBL2NUM(p->Y * inv_multiplier)));
         }

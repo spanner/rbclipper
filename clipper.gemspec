@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require File.expand_path("../lib/clipper/version", __FILE__)
 
 Gem::Specification.new do |s|
-  s.name        = "ruby_clipper"
+  s.name        = "clipper"
   s.version     = Clipper::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ['Angus Johnson','Mike Owens', 'Dag Rende', 'Jaap van der Plas', 'Simon George']
