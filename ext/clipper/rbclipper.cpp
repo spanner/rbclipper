@@ -165,17 +165,17 @@ rbclipperoffset_new(VALUE klass)
 
 static VALUE
 rbclipper_add_polygon_internal(VALUE self, VALUE polygon,
-                               PolyType polytype)
+                               PolyType polytype, bool closed = true)
 {
   ClipperLib::Path tmp;
   double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
   ary_to_polygon(polygon, &tmp, multiplier);
-  XCLIPPER(self)->AddPath(tmp, polytype, true);
+  XCLIPPER(self)->AddPath(tmp, polytype, closed);
   return Qnil;
 }
 
 static VALUE
-rbclipper_add_polygons_internal(VALUE self, VALUE polygonsValue, PolyType polytype) {
+rbclipper_add_polygons_internal(VALUE self, VALUE polygonsValue, PolyType polytype, bool closed = true) {
   double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
   Paths polygons;
   for(long i = 0; i != RARRAY_LEN(polygonsValue); i++) {
@@ -186,8 +186,20 @@ rbclipper_add_polygons_internal(VALUE self, VALUE polygonsValue, PolyType polyty
     ary_to_polygon(sub, &tmp, multiplier);
     polygons.push_back(tmp);
   }
-  XCLIPPER(self)->AddPaths(polygons, polytype, true);
+  XCLIPPER(self)->AddPaths(polygons, polytype, closed);
   return Qnil;
+}
+
+static VALUE
+rbclipper_add_subject_polyline(VALUE self, VALUE polyline)
+{
+  return rbclipper_add_polygon_internal(self, polyline, ptSubject, false);
+}
+
+static VALUE
+rbclipper_add_subject_polylines(VALUE self, VALUE polylines)
+{
+  return rbclipper_add_polygons_internal(self, polylines, ptSubject, false);
 }
 
 static VALUE
@@ -407,16 +419,18 @@ void Init_clipper() {
                    (ruby_method) rbclipper_point_in_polygon, 3);
     rb_define_method(k, "area",
                    (ruby_method) rbclipper_area, 1);
-    // rb_define_method(k, "offset_polygons",
-    //                (ruby_method) rbclipper_offset_polygons, -1);
     rb_define_method(k, "add_subject_polygon",
                    (ruby_method) rbclipper_add_subject_polygon, 1);
     rb_define_method(k, "add_clip_polygon",
                    (ruby_method) rbclipper_add_clip_polygon, 1);
+    rb_define_method(k, "add_subject_polyline",
+                   (ruby_method) rbclipper_add_subject_polyline, 1);
     rb_define_method(k, "add_subject_polygons",
                    (ruby_method) rbclipper_add_subject_polygons, 1);
     rb_define_method(k, "add_clip_polygons",
                    (ruby_method) rbclipper_add_clip_polygons, 1);
+    rb_define_method(k, "add_subject_polylines",
+                   (ruby_method) rbclipper_add_subject_polylines, 1);
     rb_define_method(k, "clear!",
                    (ruby_method) rbclipper_clear, 0);
     rb_define_method(k, "intersection",
