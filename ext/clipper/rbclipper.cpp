@@ -132,6 +132,19 @@ ary_to_polygon(VALUE ary, ClipperLib::Path* poly, double multiplier)
 }
 
 static void
+arys_to_polygons(VALUE polygonsValue, ClipperLib::Paths* polygons, const double multiplier)
+{
+  for(long i = 0; i != RARRAY_LEN(polygonsValue); i++) {
+    VALUE sub = rb_ary_entry(polygonsValue, i);
+    Check_Type(sub, T_ARRAY);
+
+    ClipperLib::Path tmp;
+    ary_to_polygon(sub, &tmp, multiplier);
+    polygons->push_back(tmp);
+  }
+}
+
+static void
 rbclipper_free(void* ptr)
 {
   delete (Clipper*) ptr;
@@ -176,18 +189,40 @@ rbclipper_add_polygon_internal(VALUE self, VALUE polygon,
 
 static VALUE
 rbclipper_add_polygons_internal(VALUE self, VALUE polygonsValue, PolyType polytype, bool closed = true) {
-  double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
-  Paths polygons;
-  for(long i = 0; i != RARRAY_LEN(polygonsValue); i++) {
-    VALUE sub = rb_ary_entry(polygonsValue, i);
-    Check_Type(sub, T_ARRAY);
-
-    ClipperLib::Path tmp;
-    ary_to_polygon(sub, &tmp, multiplier);
-    polygons.push_back(tmp);
-  }
-  XCLIPPER(self)->AddPaths(polygons, polytype, closed);
+  Paths tmp;
+  const double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+  arys_to_polygons(polygonsValue, &tmp, multiplier);
+  XCLIPPER(self)->AddPaths(tmp, polytype, closed);
   return Qnil;
+}
+
+static VALUE
+rbclipper_minkowski_sum(VALUE self, VALUE patternValue, VALUE pathsValue, bool isClosed = true) {
+  Paths paths;
+  const double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+  arys_to_polygons(pathsValue, &paths, multiplier);
+
+  Path pattern;
+  ary_to_polygon(patternValue, &pattern, multiplier);
+
+  Paths solution;
+
+// void MinkowskiSum(const Path& pattern, const Path& path, Paths& solution, bool pathIsClosed);
+// void MinkowskiSum(const Path& pattern, const Paths& paths, Paths& solution, bool pathIsClosed);
+
+  ClipperLib::MinkowskiSum(pattern, paths, solution, isClosed);
+
+  const double inv_multiplier = 1.0 / multiplier;
+
+  VALUE r = rb_ary_new();
+  for(Paths::iterator i = solution.begin(); i != solution.end(); ++i) {
+    VALUE sub = rb_ary_new();
+    for(Path::iterator p = i->begin(); p != i->end(); ++p) {
+        rb_ary_push(sub, rb_ary_new3(2, DBL2NUM(p->X * inv_multiplier), DBL2NUM(p->Y * inv_multiplier)));
+    }
+    rb_ary_push(r, sub);
+  }
+  return r;
 }
 
 static VALUE
@@ -286,24 +321,16 @@ rbclipper_point_in_polygon(VALUE self, VALUE px, VALUE py, VALUE polygonValue)
 static VALUE
 rbclipper_offset_polygons(int argc, VALUE* argv, VALUE self)
 {
-    double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
-    double inv_multiplier = 1.0 / multiplier;
+    const double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+    const double inv_multiplier = 1.0 / multiplier;
     VALUE polygonsValue, deltaValue, joinTypeValue, endTypeValue;
 
     rb_scan_args(argc, argv, "31", &polygonsValue, &deltaValue, &joinTypeValue, &endTypeValue);
 
     Paths polygons;
-    for(long i = 0; i != RARRAY_LEN(polygonsValue); i++) {
-        VALUE sub = rb_ary_entry(polygonsValue, i);
-        Check_Type(sub, T_ARRAY);
-
-        ClipperLib::Path tmp;
-        ary_to_polygon(sub, &tmp, multiplier);
-        polygons.push_back(tmp);
-    }
+    arys_to_polygons(polygonsValue, &polygons, multiplier);
 
     Paths resultPaths;
-
     XCLIPPEROFFSET(self)->AddPaths(polygons, sym_to_jointype(joinTypeValue), sym_to_endtype(endTypeValue));
     XCLIPPEROFFSET(self)->Execute(resultPaths, NUM2DBL(deltaValue) * multiplier);
 
@@ -457,6 +484,9 @@ void Init_clipper() {
                    (ruby_method) rbclipper_multiplier, 0);
     rb_define_method(k, "multiplier=",
                    (ruby_method) rbclipper_multiplier_eq, 1);
+
+    rb_define_method(k, "minkowski_sum",
+                   (ruby_method) rbclipper_minkowski_sum, 3);
 
     VALUE ko = rb_define_class_under(mod, "ClipperOffset", rb_cObject);
     rb_define_singleton_method(ko, "new",

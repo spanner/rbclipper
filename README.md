@@ -109,7 +109,7 @@ Clipper::Clipper Methods
 * `Clipper#add_clip_polygons(expolygon)`
 
   Add an "ExPolygon" to the engine.  Which is basically a list of polygons - the first is the
-  outside (counter-clock-wise) and the rest, if any, are the holes (clock-wise).  
+  outside (counter-clock-wise) and the rest, if any, are the holes (clock-wise).
   Boolean operations consider every expolygon added in this manner to be the same object.
 
 * `Clipper#multiplier`
@@ -147,3 +147,18 @@ Clipper::Clipper Methods
 
 * On Y-axis positive upward displays, Orientation will return true if the polygon's orientation is counter-clockwise.
 * On Y-axis positive downward displays, Orientation will return true if the polygon's orientation is clockwise.
+
+Minkowski sum
+-------------
+
+    # Greek capital sigma (sum sign) ...
+    sigma = [[300, 400], [100, 400], [200,300], [100,200], [300,200]]
+
+    # diagonal brush pattern ...
+    brush = [[4, -6], [6, -6], [-4, 6], [-6, 6]]
+
+    solution = Clipper::Clipper.new.minkowski_sum(brush, [sigma], false)
+
+    # ...
+
+![Minkowski sum of sigma and brush](minkowski_sum.svg)

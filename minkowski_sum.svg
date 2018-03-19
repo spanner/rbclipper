@@ -1,0 +1,19 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg width="350" height="420"  transform='translate(0, -90)' style="background:#ddd" 
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+
+<style type="text/css">
+<![CDATA[
+
+]]>
+</style>
+
+<polygon points="206.0, 294.0 196.0, 306.0 108.0, 394.0 306.0, 394.0 296.0, 406.0 94.0, 406.0 104.0, 394.0 193.0, 305.0 94.0, 206.0 104.0, 194.0 306.0, 194.0 296.0, 206.0 118.0, 206.0 " fill="none" stroke="red"/>
+<text x="10.0" y="195.0" font-family="arial" font-size="11.2" fill="red">
+MinkowskiSum
+</text>
+
+</svg>
