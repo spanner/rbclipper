@@ -206,11 +206,31 @@ rbclipper_minkowski_sum(VALUE self, VALUE patternValue, VALUE pathsValue, bool i
   ary_to_polygon(patternValue, &pattern, multiplier);
 
   Paths solution;
-
-// void MinkowskiSum(const Path& pattern, const Path& path, Paths& solution, bool pathIsClosed);
-// void MinkowskiSum(const Path& pattern, const Paths& paths, Paths& solution, bool pathIsClosed);
-
   ClipperLib::MinkowskiSum(pattern, paths, solution, isClosed);
+
+  const double inv_multiplier = 1.0 / multiplier;
+
+  VALUE r = rb_ary_new();
+  for(Paths::iterator i = solution.begin(); i != solution.end(); ++i) {
+    VALUE sub = rb_ary_new();
+    for(Path::iterator p = i->begin(); p != i->end(); ++p) {
+        rb_ary_push(sub, rb_ary_new3(2, DBL2NUM(p->X * inv_multiplier), DBL2NUM(p->Y * inv_multiplier)));
+    }
+    rb_ary_push(r, sub);
+  }
+  return r;
+}
+
+static VALUE
+rbclipper_minkowski_diff(VALUE self, VALUE poly1v, VALUE poly2v) {
+  const double multiplier = NUM2DBL(rb_iv_get(self, "@multiplier"));
+  Path poly1;
+  ary_to_polygon(poly1v, &poly1, multiplier);
+  Path poly2;
+  ary_to_polygon(poly2v, &poly2, multiplier);
+
+  Paths solution;
+  ClipperLib::MinkowskiDiff(poly1, poly2, solution);
 
   const double inv_multiplier = 1.0 / multiplier;
 
@@ -487,6 +507,9 @@ void Init_clipper() {
 
     rb_define_method(k, "minkowski_sum",
                    (ruby_method) rbclipper_minkowski_sum, 3);
+
+    rb_define_method(k, "minkowski_diff",
+                   (ruby_method) rbclipper_minkowski_diff, 2);
 
     VALUE ko = rb_define_class_under(mod, "ClipperOffset", rb_cObject);
     rb_define_singleton_method(ko, "new",
