@@ -335,7 +335,7 @@ rbclipper_point_in_polygon(VALUE self, VALUE px, VALUE py, VALUE polygonValue)
     ClipperLib::Path polygon;
     ary_to_polygon(polygonValue, &polygon, multiplier);
 
-    return abs(ClipperLib::PointInPolygon(xy_to_intpoint(px, py, multiplier), polygon)) == 1 ? Qtrue : Qfalse;
+    return INT2NUM(ClipperLib::PointInPolygon(xy_to_intpoint(px, py, multiplier), polygon));
 }
 
 static VALUE
@@ -473,7 +473,7 @@ void Init_clipper() {
 
     rb_define_method(k, "orientation",
                    (ruby_method) rbclipper_orientation, 1);
-    rb_define_method(k, "pt_in_polygon",
+    rb_define_method(k, "point_in_polygon",
                    (ruby_method) rbclipper_point_in_polygon, 3);
     rb_define_method(k, "area",
                    (ruby_method) rbclipper_area, 1);
