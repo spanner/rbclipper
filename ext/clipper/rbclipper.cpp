@@ -399,6 +399,7 @@ rbclipper_execute_internal(VALUE self, ClipType cliptype,
         }
         rb_ary_push(r, sub);
       }
+#ifdef use_lines
       OpenPathsFromPolyTree(polytree, solution);
       for(Paths::iterator i = solution.begin(); i != solution.end(); ++i) {
         VALUE sub = rb_ary_new();
@@ -408,6 +409,7 @@ rbclipper_execute_internal(VALUE self, ClipType cliptype,
         }
         rb_ary_push(r, sub);
       }
+#endif
   }
   return r;
 }

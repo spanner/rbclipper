@@ -4,7 +4,7 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 6.2.1 of Clipper.
+This release contains version 6.4.2 of Clipper.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
@@ -112,6 +112,11 @@ Clipper::Clipper Methods
   outside (counter-clock-wise) and the rest, if any, are the holes (clock-wise).
   Boolean operations consider every expolygon added in this manner to be the same object.
 
+* `Clipper#add_subject_polyline(polyline)`
+
+  Add an open polygon to the engine.
+
+
 * `Clipper#multiplier`
 
 * `Clipper#multiplier=`
@@ -131,6 +136,10 @@ Clipper::Clipper Methods
 
    Performs a boolean operation on the polygons that have been added to the
    clipper object.  The result is a list of polygons or expolygons, depending on result_type being :polygons or :expolygons
+   FIXME: :expolygons functionality is not implemented.
+
+   If the result contains open polygons, they will also be returned. To see if a polygon is open, check if the first point is nil.
+   FIXME: Instead of this, directly support Polytrees from Clipper
 
 * `Clipper#offset_polygons(polygons, delta, join_type, miter_limit=0)`
 
@@ -162,3 +171,9 @@ Minkowski sum
     # ...
 
 ![Minkowski sum of sigma and brush](minkowski_sum.svg)
+
+PointInPolygon
+--------------
+
+    # drop all points inside of polygon
+    points.select! { |e| CLIPPER.point_in_polygon(*e, poly) == 0 }
