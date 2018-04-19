@@ -1,6 +1,5 @@
-require 'clipper'
-
 # frozen_string_literal: true
+require 'clipper'
 
 require 'simplecov'
 require 'simplecov-json'
@@ -12,13 +11,11 @@ SimpleCov.start
 require 'minitest/autorun'
 require 'minitest/pride'
 
-require 'geometry'
-
 
 # Helper class to mange rectangles
 class Rectangle
   def initialize(pos, size)
-    @r = [Vector[Float(pos[0]), Float(pos[1])], Vector[Float(size[0]), Float(size[1])]]
+    @r = [[Float(pos[0]), Float(pos[1])], [Float(size[0]), Float(size[1])]]
   end
 
   def pos
