@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/KjellMorgenstern/rbclipper.svg?branch=master)](https://travis-ci.org/KjellMorgenstern/rbclipper)
+
 Synopsis
 ==========
 These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
@@ -11,11 +13,11 @@ This release contains version 6.4.2 of Clipper.
 
 To install:
 
-    gem install ruby_clipper
-
-Build locally:
-
-    rake install
+    git clone git@github.com:KjellMorgenstern/rbclipper.git
+    cd rbclipper
+    bundle exec ruby ext/extconf.rb
+    make install
+    bundle exec rake test
 
 
 Simple Usage:
