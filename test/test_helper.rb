@@ -1,16 +1,12 @@
 # frozen_string_literal: true
 require 'clipper'
-
-require 'simplecov'
-require 'simplecov-json'
-# require 'stackprof'
-
-SimpleCov.formatter = SimpleCov::Formatter::JSONFormatter
-SimpleCov.start
-
 require 'minitest/autorun'
-require 'minitest/pride'
 
+# Note: this would be for circle ci, but we have travis
+#require 'minitest-ci'
+
+require 'minitest/junit'
+# require 'minitest/reporters'
 
 # Helper class to mange rectangles
 class Rectangle

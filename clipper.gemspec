@@ -23,10 +23,10 @@ Gem::Specification.new do |s|
   s.add_development_dependency "bundler", ">= 1.5"
   s.add_development_dependency "rake"
   s.add_development_dependency "minitest", ">= 5.8"
-  s.add_development_dependency "simplecov"
-  s.add_development_dependency "simplecov-json"
-  # s.add_development_dependency "clipper"
+  s.add_development_dependency "minitest-junit"
+  s.add_development_dependency "minitest-snail"
   # s.add_development_dependency "minitest-reporters", ">= 1.1"
+  
   s.files        = Dir["**/clipper/*", "LICENSE*", "Rakefile", "Gemfile", "*.md"]
   s.executables  = Dir["**/clipper/*.so"]
   s.require_path = 'lib'
