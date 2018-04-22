@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/KjellMorgenstern/rbclipper.svg?branch=master)](https://travis-ci.org/KjellMorgenstern/rbclipper)
 
+
 Synopsis
 ==========
 These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping

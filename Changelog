@@ -1,0 +1,13 @@
+2018-04-22 Kjell Morgenstern
+    * Upstream 6.4.2
+    * Added unit tests and travis.ci
+    * Added support for polylines
+    * Added support for minkowski sum and diff
+    * Breaking change: PtInPolygon was replaced with PointInPolygon. Now returns same values as Clipper.
+
+2010-12-08 Mike Owens <http://mike.filespanker.com>
+	* Gemification and Ruby 1.8.7 fixes courtesy of Tom Agnew
+	* Upstream 2.9
+
+2010-10-17 Mike Owens <http://mike.filespanker.com>
+	* Pull upstream 2.522

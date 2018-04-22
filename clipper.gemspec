@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.description = "Builds a native ruby extension for Clipper"
   s.licenses     = "Boost Software License - Version 1.0"
 
-  s.extra_rdoc_files  = %w(README.md ext/clipper/rbclipper.cpp)
+  s.extra_rdoc_files  = %w(README.md Changelog ext/clipper/rbclipper.cpp)
   s.rdoc_options.concat %w(--main=README.md)
 
   s.required_rubygems_version = ">= 1.3.6"
@@ -26,8 +26,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency "minitest-junit"
   s.add_development_dependency "minitest-snail"
   # s.add_development_dependency "minitest-reporters", ">= 1.1"
-  
-  s.files        = Dir["**/clipper/*", "LICENSE*", "Rakefile", "Gemfile", "*.md"]
+
+  s.files        = Dir["**/clipper/*", "LICENSE*", "Changelog", "Rakefile", "Gemfile", "*.md"]
   s.executables  = Dir["**/clipper/*.so"]
   s.require_path = 'lib'
 
