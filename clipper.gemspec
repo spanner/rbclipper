@@ -4,12 +4,12 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require File.expand_path("../lib/clipper/version", __FILE__)
 
 Gem::Specification.new do |s|
-  s.name        = "clipper"
+  s.name        = "rbclipper"
   s.version     = Clipper::VERSION
   s.platform    = Gem::Platform::RUBY
-  s.authors     = ['Angus Johnson','Mike Owens', 'Dag Rende', 'Jaap van der Plas', 'Simon George', 'Kjell Morgenstern']
-  s.email       = ['simon@sfcgeorge.co.uk', 'kjell@gmx.de']
-  s.homepage    = "http://github.com/kjellmorgenstern/rbclipper"
+  s.authors     = ['Angus Johnson','Mike Owens', 'Dag Rende', 'Jaap van der Plas', 'Simon George', 'Kjell Morgenstern', 'Will Ross']
+  s.email       = ['will@spanner.org']
+  s.homepage    = "http://github.com/spanner/rbclipper"
   s.summary     = "Ruby wrapper for Clipper, Angus Johnson's excellent polygon clipping library"
   s.description = "Builds a native ruby extension for Clipper"
   s.licenses     = "Boost Software License - Version 1.0"

@@ -7,23 +7,29 @@ These are Ruby bindings to Clipper, Angus Johnson's Polygon clipping
 library. Because Clipper is not readily packaged, and is so beautifully
 self-contained, I've included the two required files in the package.
 
-This release contains version 6.4.2 of Clipper.
+This release contains version 6.4.2 of Clipper and some improvements by
+Kjell Morgenstern to add tests and support polylines.
 
 * [Clipper Homepage](http://angusj.com/delphi/clipper.php)
 * [rbclipper](http://github.com/mieko/rbclipper)
 
-To install:
 
-    git clone git@github.com:KjellMorgenstern/rbclipper.git
-    cd rbclipper
-    bundle exec ruby ext/extconf.rb
-    make install
-    bundle exec rake test
+Installation
+==========
+
+This version is published as the rbclipper gem. The original mieko-based gem seems not to be maintained.
+
+  gem install rbclipper
+
+
+To build locally:
+
+    rake install
 
 
 Simple Usage:
 ===========
-This shold be enough to get you started.  Full documentation is below.
+This should be enough to get you started. Slightly fuller documentation is below.
 
     require 'clipper'
 
@@ -117,8 +123,8 @@ Clipper::Clipper Methods
 
 * `Clipper#add_subject_polyline(polyline)`
 
-  Add an open polygon to the engine.
-
+  Add an open polygon (ie a polyline) to the engine.
+  NB. polylines can only be present as a subject shape, and will only interact with clip shapes.
 
 * `Clipper#multiplier`
 
@@ -179,4 +185,4 @@ PointInPolygon
 --------------
 
     # drop all points inside of polygon
-    points.select! { |e| CLIPPER.point_in_polygon(*e, poly) == 0 }
+    points.select! { |e| c.point_in_polygon(*e, poly) == 0 }
